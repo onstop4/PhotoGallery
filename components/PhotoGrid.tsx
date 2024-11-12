@@ -1,49 +1,41 @@
-import { FC } from "react";
-import { StyleSheet, Image, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
+import { FC, useContext } from "react";
+import { StyleSheet, Image, View, TouchableOpacity, Text, FlatList } from "react-native";
 
 // Adapted from https://medium.com/@kalebjdavenport/how-to-create-a-grid-layout-in-react-native-7948f1a6f949.
 
-type PhotoItem = {
-    id: string;
-    url: string;
-    dateTaken: Date;
-};
-
-interface PhotoGridProp {
-    photoItems: PhotoItem[];
+const Photo = ({ photoItem, action }: { photoItem: PhotoItem, action: () => void }) => {
+    return <TouchableOpacity onPress={action}>
+        <Image style={styles.photo} source={{ uri: photoItem.uri }} />
+    </TouchableOpacity>
 }
 
-const Photo: FC<PhotoItem> = ({ id, url, dateTaken }) => {
-    return <Image style={styles.photo} source={{ uri: url }}></Image>
-}
-
-const PhotoGrid: FC<PhotoGridProp> = ({ photoItems }) => {
-    return <View style={styles.grid}>
-        {photoItems.map(photoData => <Photo key={photoData.id} {...photoData} />)}
-    </View>
+const PhotoGrid = ({ photoData }: { photoData: Array<[PhotoItem, () => void]> }) => {
+    return photoData.length > 0 ? <View style={styles.grid}>
+        <FlatList data={photoData} keyExtractor={item => item[0].id.toString()} renderItem={({ item }) => {
+            const [photoItem, action] = item; // Deconstructing the tuple
+            return <Photo key={photoItem.id} photoItem={photoItem} action={action} />;
+        }}
+            numColumns={4} />
+    </View> : <Text>No photos here.</Text>
 }
 
 export default PhotoGrid;
 
 const styles = StyleSheet.create({
     grid: {
+        flex: 4, // the number of columns you want to devide the screen into
         marginHorizontal: "auto",
-        width: 400,
-        flexDirection: "row",
-        flexWrap: "wrap"
     },
     photo: {
         flex: 1,
-        minWidth: 100,
-        maxWidth: 100,
-        height: 100,
-        justifyContent: "center",
+        maxWidth: "25%",
         alignItems: "center",
 
-        // // my visual styles; not important for grid
-        // padding: 10,
-        // backgroundColor: "rgba(249, 180, 45, 0.25)",
-        // borderWidth: 1.5,
-        // borderColor: "#fff"
+        padding: 50,
+        backgroundColor: "rgba(249, 180, 45, 0.25)",
+        borderWidth: 1.5,
+        borderColor: "#fff"
     }
 });
