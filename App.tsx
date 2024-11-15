@@ -5,36 +5,49 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LocalPhotosScreen from 'screens/LocalPhotosScreen';
 import SinglePhotoScreen from 'screens/SinglePhotoScreen';
 import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
-import RootStackParamList from 'helpers/paramlists/rootstack';
-import { DummyPhotoStore, LocalPhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
-import MainTabsParamList from 'helpers/paramlists/maintabs';
+import { DummyPhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
 import { IconButton, PaperProvider } from 'react-native-paper';
+import ParamList from 'helpers/paramlists';
+import { AlbumStore, AlbumStoreContext } from 'helpers/albums';
+import AlbumsScreen from 'screens/AlbumsScreen';
+import AlbumPhotosScreen from 'screens/AlbumPhotosScreen';
+import AddToAlbumModalScreen from 'screens/AddToAlbumModalScreen';
 
 function MainTabs() {
-  const Tabs = createBottomTabNavigator<MainTabsParamList>();
+  const Tabs = createBottomTabNavigator<ParamList>();
 
   return (
     <Tabs.Navigator screenOptions={{ headerShown: true, tabBarIconStyle: { display: 'none' } }}>
       <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />
+      <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />
     </Tabs.Navigator>
   );
 }
 
 function App() {
-  const Stack = createNativeStackNavigator<RootStackParamList>();
+  const Stack = createNativeStackNavigator<ParamList>();
 
   const initialStore: [Store, React.Dispatch<React.SetStateAction<Store>>] = React.useState(new DummyPhotoStore());
+  const albumStore = new AlbumStore();
 
   return (
     <PaperProvider>
       <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
         <PhotoStoreContext.Provider value={initialStore}>
-          <NavigationContainer>
-            <Stack.Navigator>
-              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
-            </Stack.Navigator>
-          </NavigationContainer >
+          <AlbumStoreContext.Provider value={albumStore}>
+            <NavigationContainer>
+              <Stack.Navigator>
+                <Stack.Group>
+                  <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+                  <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
+                  <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+                </Stack.Group>
+                <Stack.Group screenOptions={{ presentation: "modal" }}>
+                  <Stack.Screen name="AddToAlbumModalScreen" component={AddToAlbumModalScreen} />
+                </Stack.Group>
+              </Stack.Navigator>
+            </NavigationContainer>
+          </AlbumStoreContext.Provider>
         </PhotoStoreContext.Provider>
       </SQLiteProvider>
     </PaperProvider>
@@ -54,23 +67,23 @@ async function migrateDbIfNeeded(db: SQLiteDatabase) {
   if (currentDbVersion === 0) {
     await db.execAsync(`
 PRAGMA journal_mode = 'wal';
-CREATE TABLE Photos (
+CREATE TABLE Photo (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   uri TEXT NOT NULL,
   date_taken TEXT NOT NULL
 );
 
-CREATE TABLE Albums (
-  id INTEGER PRIMARY KEY,
+CREATE TABLE Album (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL
 );
 
-CREATE TABLE AlbumPhotos (
+CREATE TABLE AlbumPhoto (
   photo_id INTEGER NOT NULL,
   album_id INTEGER NOT NULL,
   PRIMARY KEY (photo_id, album_id),
-  FOREIGN KEY (photo_id) REFERENCES Photos(id) ON DELETE CASCADE,
-  FOREIGN KEY (album_id) REFERENCES Albums(id) ON DELETE CASCADE
+  FOREIGN KEY (photo_id) REFERENCES Photo(id) ON DELETE CASCADE,
+  FOREIGN KEY (album_id) REFERENCES Album(id) ON DELETE CASCADE
 );
 
 `);

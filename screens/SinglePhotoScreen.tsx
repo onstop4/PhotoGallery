@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSQLiteContext } from "expo-sqlite";
 import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
-import RootStackParamList from "helpers/paramlists/rootstack";
+import RootStackParamList from "helpers/paramlists";
 import { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 

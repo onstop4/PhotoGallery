@@ -1,21 +1,37 @@
 import { useNavigation } from "@react-navigation/native";
 import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
-import { FC, useContext } from "react";
+import { FC, useContext, useState } from "react";
 import { StyleSheet, Image, View, TouchableOpacity, Text, FlatList } from "react-native";
 
 // Adapted from https://medium.com/@kalebjdavenport/how-to-create-a-grid-layout-in-react-native-7948f1a6f949.
 
-const Photo = ({ photoItem, action }: { photoItem: PhotoItem, action: () => void }) => {
-    return <TouchableOpacity onPress={action}>
-        <Image style={styles.photo} source={{ uri: photoItem.uri }} />
+type action = (photoItem: PhotoItem) => void;
+
+const Photo = ({ photoItem, action, deselectAction }: { photoItem: PhotoItem, action: action, deselectAction?: action }) => {
+    const [selected, setSelected] = useState(false);
+
+    return <TouchableOpacity onPress={() => {
+        if (deselectAction) {
+            if (selected) {
+                deselectAction(photoItem)
+                setSelected(true);
+            } else {
+                action(photoItem);
+                setSelected(false);
+            }
+        } else
+            action(photoItem)
+    }}>
+        <View>
+            <Image style={styles.photo} source={{ uri: photoItem.uri }} />
+        </View>
     </TouchableOpacity>
 }
 
-const PhotoGrid = ({ photoData }: { photoData: Array<[PhotoItem, () => void]> }) => {
-    return photoData.length > 0 ? <View style={styles.grid}>
-        <FlatList data={photoData} keyExtractor={item => item[0].id.toString()} renderItem={({ item }) => {
-            const [photoItem, action] = item; // Deconstructing the tuple
-            return <Photo key={photoItem.id} photoItem={photoItem} action={action} />;
+const PhotoGrid = ({ photoItems, action, deselectAction }: { photoItems: PhotoItem[], action: action, deselectAction?: action }) => {
+    return photoItems.length > 0 ? <View style={styles.grid}>
+        <FlatList data={photoItems} keyExtractor={item => item.id.toString()} renderItem={({ item }) => {
+            return <Photo key={item.id} photoItem={item} action={action} deselectAction={deselectAction} />;
         }}
             numColumns={4} />
     </View> : <Text>No photos here.</Text>

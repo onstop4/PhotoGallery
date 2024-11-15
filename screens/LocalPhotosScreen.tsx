@@ -3,40 +3,37 @@ import PhotoGrid from "components/PhotoGrid";
 import { useContext, useEffect, useState } from "react";
 import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import MainTabsParamList from "helpers/paramlists/maintabs";
 import { Button, Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
 import { useSQLiteContext } from "expo-sqlite";
+import ParamList from "helpers/paramlists";
+import { useFocusEffect } from "@react-navigation/native";
 
-type LocalPhotosScreenProps = NativeStackScreenProps<MainTabsParamList, "LocalPhotosScreen">;
+type LocalPhotosScreenProps = NativeStackScreenProps<ParamList, "LocalPhotosScreen">;
 
 function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
     const db = useSQLiteContext();
     const [store, setStore] = useStoreContext();
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
 
-    const [visible, setVisible] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(false);
 
-    const openMenu = () => setVisible(true);
+    const openMenu = () => setMenuVisible(true);
 
-    const closeMenu = () => setVisible(false);
+    const closeMenu = () => setMenuVisible(false);
 
-    useEffect(() => {
+    useFocusEffect(() => {
         if (!(store instanceof LocalPhotoStore))
             (async () => {
                 const newStore = new LocalPhotoStore()
                 setStore(newStore);
                 setPhotoItems(await newStore.getAll(db));
             })();
-        // else
-        //     (async () => {
-        //         await store.refresh(db);
-        //         setPhotoItems(await store.getAll(db));
-        //     })();
+
         navigation.setOptions({
-            headerRight: () => {
-                return <Menu
-                    visible={visible}
+            headerRight: () =>
+                <Menu
+                    visible={menuVisible}
                     onDismiss={closeMenu}
                     anchor={<IconButton
                         icon="dots-vertical"
@@ -53,22 +50,20 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
                         });
 
                         if (!result.canceled) {
-                            await store.addNewPhotos(db, result.assets.map(asset => asset.uri), new Date());
+                            const date = new Date();
+                            await store.addNewPhotos(db, result.assets.map(asset => ({ originUri: asset.uri, dateTaken: date })));
                             setPhotoItems(await store.getAll(db));
                         }
-                    }} title="Add existing photo" />
+                    }} title="Add existing photos" />
                 </Menu>
-            }
+
 
         })
     });
 
-    const photoData: Array<[PhotoItem, () => void]> = photoItems.map(photoItem => [photoItem, () => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })])
-
-
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <PhotoGrid photoData={photoData} ></PhotoGrid>
+            <PhotoGrid photoItems={photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );
 }

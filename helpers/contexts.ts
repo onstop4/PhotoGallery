@@ -2,6 +2,11 @@ import { copyAsync, documentDirectory, getInfoAsync } from "expo-file-system";
 import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
 import { createContext, useContext, useState } from "react";
 
+type PhotoToAdd = {
+    originUri: string,
+    dateTaken: Date
+}
+
 type PhotoItem = {
     id: number;
     uri: string;
@@ -52,6 +57,10 @@ abstract class Store {
 
     abstract refresh(db: SQLiteDatabase | undefined): Promise<void>;
 
+    mapRows(rows: any[]): PhotoItem[] {
+        return rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
+    }
+
     async getAll(db: SQLiteDatabase | undefined): Promise<PhotoItem[]> {
         if (!this.photoItems)
             await this.refresh(db);
@@ -78,7 +87,7 @@ abstract class Store {
     //     return navigator;
     // }
 
-    abstract addNewPhotos(db: SQLiteDatabase | undefined, uri: string[], dateTaken: Date): Promise<void>
+    abstract addNewPhotos(db: SQLiteDatabase | undefined, photos: PhotoToAdd[] | PhotoItem[]): Promise<void>
 }
 
 class DummyPhotoStore extends Store {
@@ -86,7 +95,7 @@ class DummyPhotoStore extends Store {
         throw new Error("Do not use.");
     }
 
-    async addNewPhotos(db: undefined, uri: string[], dateTaken: Date): Promise<void> {
+    async addNewPhotos(db: undefined, photos: PhotoToAdd[]): Promise<void> {
         throw new Error("Do not use.");
 
     }
@@ -104,15 +113,16 @@ function generateRandomString(length: number) {
 
 class LocalPhotoStore extends Store {
     async refresh(db: SQLiteDatabase) {
-        const rows = await db.getAllAsync('select * from Photos order by date_taken desc, id desc');
-        this.photoItems = rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
+        const rows = await db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo order by date_taken desc, id desc');
+        this.photoItems = this.mapRows(rows);
     }
 
-    async addNewPhotos(db: SQLiteDatabase, uris: string[], dateTaken: Date): Promise<void> {
-        const dateTakenIso = dateTaken.toISOString();
+    async addNewPhotos(db: SQLiteDatabase, photos: PhotoToAdd[]): Promise<void> {
         await db.withExclusiveTransactionAsync(async () => {
-            const statement = await db.prepareAsync('insert into Photos (uri, date_taken) values ($uri, $dateTaken)');
-            for (const oldUri of uris) {
+            const statement = await db.prepareAsync('insert into Photo (uri, date_taken) values ($uri, $dateTaken)');
+            for (const photo of photos) {
+                const oldUri = photo.originUri;
+                const dateTakenIso = photo.dateTaken.toISOString();
                 let newUri;
                 do {
                     newUri = documentDirectory + generateRandomString(20);
@@ -140,4 +150,4 @@ function useStoreContext() {
 
 }
 
-export { PhotoItem, Store, LocalPhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore };
+export { PhotoItem, Store, LocalPhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
