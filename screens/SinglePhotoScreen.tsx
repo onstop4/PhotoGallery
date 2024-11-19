@@ -15,7 +15,7 @@ function SinglePhotoScreen({ route, navigation }: SinglePhotoScreenProps) {
 
     useEffect(() => {
         (async () => {
-            const photoItem = await store.getById(db, id);
+            const photoItem = await store.getById(id);
             if (!photoItem)
                 throw new Error("Something went wrong in SinglePhotoScreen.");
 

@@ -5,13 +5,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LocalPhotosScreen from 'screens/LocalPhotosScreen';
 import SinglePhotoScreen from 'screens/SinglePhotoScreen';
 import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
-import { DummyPhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
+import { DummyPhotoStore, OnlinePhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
 import { IconButton, PaperProvider } from 'react-native-paper';
 import ParamList from 'helpers/paramlists';
 import { AlbumStore, AlbumStoreContext } from 'helpers/albums';
 import AlbumsScreen from 'screens/AlbumsScreen';
 import AlbumPhotosScreen from 'screens/AlbumPhotosScreen';
-import AddToAlbumModalScreen from 'screens/AddToAlbumModalScreen';
+import SettingsScreen from 'screens/SettingsScreen';
+import SelectPhotosScreen from 'screens/SelectPhotosScreen';
+import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -19,7 +21,9 @@ function MainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: true, tabBarIconStyle: { display: 'none' } }}>
       <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />
+      <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos" }} />
       <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />
+      <Tabs.Screen name="SettingsScreen" component={SettingsScreen} />
     </Tabs.Navigator>
   );
 }
@@ -43,7 +47,7 @@ function App() {
                   <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
                 </Stack.Group>
                 <Stack.Group screenOptions={{ presentation: "modal" }}>
-                  <Stack.Screen name="AddToAlbumModalScreen" component={AddToAlbumModalScreen} />
+                  <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
                 </Stack.Group>
               </Stack.Navigator>
             </NavigationContainer>

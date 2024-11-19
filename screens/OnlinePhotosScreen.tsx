@@ -1,18 +1,20 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Button, StyleSheet, Text, View } from "react-native";
 import PhotoGrid from "components/PhotoGrid";
 import { useContext, useEffect, useState } from "react";
-import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
+import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Button, Divider, IconButton, Menu } from "react-native-paper";
+import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
 import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
 import { useFocusEffect } from "@react-navigation/native";
+import { Session } from "@supabase/supabase-js";
+import { supabase } from "helpers/supabase";
 
-type LocalPhotosScreenProps = NativeStackScreenProps<ParamList, "LocalPhotosScreen">;
+type OnlinePhotosScreenProps = NativeStackScreenProps<ParamList, "OnlinePhotosScreen">;
 
-function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
-    const db = useSQLiteContext();
+function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
+    const [session, setSession] = useState<Session | undefined>();
     const [store, setStore] = useStoreContext();
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
 
@@ -23,12 +25,23 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
     const closeMenu = () => setMenuVisible(false);
 
     useFocusEffect(() => {
-        if (!(store instanceof LocalPhotoStore))
+        if (!(store instanceof OnlinePhotoStore)) {
             (async () => {
-                const newStore = new LocalPhotoStore(db)
-                setStore(newStore);
-                setPhotoItems(await newStore.getAll());
+                const { data, error } = await supabase.auth.getSession();
+                if (error) {
+                    console.log("Error getting session:", error.message);
+                    return;
+                }
+                if (data.session) {
+                    const newStore = new OnlinePhotoStore(data.session)
+                    setStore(newStore);
+                    newStore.getAll().then(photoItems => setPhotoItems(photoItems));
+                }
             })();
+        } else if (store.modified) {
+            store.modified = false;
+            store.getAll().then(photoItems => setPhotoItems(photoItems));
+        }
 
         navigation.setOptions({
             headerRight: () =>
@@ -63,9 +76,10 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
 
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Button title="Add existing photos" onPress={() => navigation.navigate("SelectPhotosScreen")} />
             <PhotoGrid photoItems={photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );
 }
 
-export default LocalPhotosScreen;
+export default OnlinePhotosScreen;

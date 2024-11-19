@@ -1,6 +1,6 @@
 import { Button, StyleSheet, View } from "react-native";
 import PhotoGrid from "components/PhotoGrid";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu, Text } from "react-native-paper";
@@ -9,26 +9,25 @@ import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
 import { useFocusEffect } from "@react-navigation/native";
 
-type AddToAlbumModalScreenProps = NativeStackScreenProps<ParamList, "AddToAlbumModalScreen">;
+type SelectPhotosScreenProps = NativeStackScreenProps<ParamList, "SelectPhotosScreen">;
 
-function AddToAlbumModalScreen({ navigation, route }: AddToAlbumModalScreenProps) {
+function SelectPhotosScreen({ navigation, route }: SelectPhotosScreenProps) {
     const db = useSQLiteContext();
     const [store, setStore] = useStoreContext();
-    const [localStore, setLocalStore] = useState<LocalPhotoStore>(new LocalPhotoStore());
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
     const [selectedPhotoItems, setSelectedPhotoItems] = useState<PhotoItem[]>([]);
 
-    useFocusEffect(() => {
+    useFocusEffect(useCallback(() => {
         (async () => {
-            setPhotoItems(await localStore.getAll(db));
+            setPhotoItems(await new LocalPhotoStore(db).getAll());
         })();
-    });
+    }, []));
 
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Button title="Done" onPress={() => (async () => {
-                await store.addNewPhotos(db, photoItems);
-                setPhotoItems(await store.getAll(db));
+                await store.addNewPhotos(selectedPhotoItems);
+                store.modified = true;
                 navigation.goBack();
             })()} />
             <PhotoGrid photoItems={photoItems}
@@ -38,4 +37,4 @@ function AddToAlbumModalScreen({ navigation, route }: AddToAlbumModalScreenProps
     );
 }
 
-export default AddToAlbumModalScreen;
+export default SelectPhotosScreen;

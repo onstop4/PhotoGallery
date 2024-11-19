@@ -4,10 +4,12 @@ import { PhotoItem } from "./contexts";
 type ParamList = {
     MainTabs: undefined,
     LocalPhotosScreen: undefined,
+    OnlinePhotosScreen: undefined,
     SinglePhotoScreen: { id: number },
     AlbumsScreen: undefined;
     AlbumPhotosScreen: { album: Album },
-    AddToAlbumModalScreen: { album: Album }
+    SelectPhotosScreen: undefined,
+    SettingsScreen: undefined
 }
 
 export default ParamList;

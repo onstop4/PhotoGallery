@@ -7,8 +7,9 @@ import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
 import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
-import { AlbumPhotoStore, areAlbumsEqual, getPhotoStoreFromAlbum } from "helpers/albums";
+import { AlbumPhotoStore, areAlbumsEqual, LocalAlbumPhotoStore, OnlineAlbumPhotoStore } from "helpers/albums";
 import { useFocusEffect } from "@react-navigation/native";
+import { supabase } from "helpers/supabase";
 
 type AlbumPhotosScreenProps = NativeStackScreenProps<ParamList, "AlbumPhotosScreen">;
 
@@ -27,24 +28,28 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
 
     const album = route.params.album;
 
-    async function resetStore() {
-        const newStore = getPhotoStoreFromAlbum(album);
-        setStore(newStore);
-        setPhotoItems(await newStore.getAll(db));
-    }
-
-    useFocusEffect(useCallback(() => {
+    useFocusEffect(() => {
         (async () => {
             let currentStore = store;
             if (firstTime.current) {
-                currentStore = getPhotoStoreFromAlbum(album);
+                navigation.setOptions({ title: album.name })
+                if (album.onlineStatus) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session)
+                        currentStore = new OnlineAlbumPhotoStore(album, session);
+                    else {
+                        console.log("User attempted to access online album even though they are not signed in.");
+                        return;
+                    }
+                } else
+                    currentStore = new LocalAlbumPhotoStore(album, db);
+
                 setStore(currentStore);
                 firstTime.current = false;
             }
-            navigation.setOptions({ title: album.name })
-            setPhotoItems(await currentStore.getAll(db));
+            setPhotoItems(await currentStore.getAll());
         })()
-    }, []));
+    });
 
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -70,7 +75,7 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                         })
                 }} title="Add existing photos" />
             </Menu> */}
-            <Button title="Add existing photos" onPress={() => navigation.navigate("AddToAlbumModalScreen", { album: album })} />
+            <Button title="Add existing photos" onPress={() => navigation.navigate("SelectPhotosScreen")} />
             <PhotoGrid photoItems={photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );

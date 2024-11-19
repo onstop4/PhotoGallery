@@ -1,24 +1,27 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Session } from "@supabase/supabase-js";
 import AlbumList from "components/AlbumList";
 import { useSQLiteContext } from "expo-sqlite";
 import { Album, useAlbumStoreContext } from "helpers/albums";
 import ParamList from "helpers/paramlists";
+import { supabase } from "helpers/supabase";
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { Button, IconButton, Menu, Modal, Portal, Text, TextInput } from "react-native-paper";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Button, IconButton, List, Menu, Modal, Portal, RadioButton, Text, TextInput } from "react-native-paper";
 
 type AlbumsScreenProps = NativeStackScreenProps<ParamList, "AlbumsScreen">;
 
 function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     const db = useSQLiteContext();
     const albumStore = useAlbumStoreContext();
-    const [albums, setAlbums] = useState<undefined | Album[]>(undefined);
-
+    const [localAlbums, setLocalAlbums] = useState<Album[]>([]);
+    const [onlineAlbums, setOnlineAlbums] = useState<Album[]>([]);
     const [menuVisible, setMenuVisible] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
 
     const [albumNameField, setAlbumNameField] = useState("");
+    const [albumOnlineStatusField, setAlbumOnlineStatusField] = useState<"local" | "public" | "private">("local");
 
     const openMenu = () => setMenuVisible(true);
 
@@ -27,9 +30,35 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     const showModal = () => setModalVisible(true);
     const hideModal = () => setModalVisible(false);
 
-    useFocusEffect(() => {
-        (async () => setAlbums(await albumStore.getAll(db)))();
+    const [session, setSession] = useState<Session | null>(null)
 
+    // useEffect(() => {
+    //     supabase.auth.getSession().then(({ data: { session }, error }) => {
+    //         setSession(session)
+    //         resetAlbums();
+    //     })
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session)
+    })
+    // }, [])
+
+    async function resetAlbums() {
+        setLocalAlbums(await albumStore.getAllLocal(db));
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setOnlineAlbums(await albumStore.getAllOnline(session));
+    }
+
+    // useFocusEffect(useCallback(() => {
+    //     resetAlbums();
+    // }, []));
+
+    useEffect(() => { resetAlbums() }, [session])
+
+    useFocusEffect(() => { resetAlbums() });
+
+    useFocusEffect(() => {
         navigation.setOptions({
             headerRight: () =>
                 <Menu
@@ -47,20 +76,37 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
                 </Menu>
 
         })
-
     })
 
+
+
+
     return (<>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            {albums && <AlbumList albums={albums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />}
-        </View>
+        <ScrollView>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                {localAlbums.length > 0 && <List.Section>
+                    <List.Subheader>Local albums</List.Subheader>
+                    <AlbumList albums={localAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
+                </List.Section>}
+                {onlineAlbums.length > 0 && <List.Section>
+                    <List.Subheader>Online albums</List.Subheader>
+                    <AlbumList albums={onlineAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
+                </List.Section>}
+            </View>
+        </ScrollView>
         <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <TextInput value={albumNameField} onChangeText={setAlbumNameField} placeholder="Album name" />
+            <RadioButton.Item label="Local" value="local" status={albumOnlineStatusField == "local" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("local")} />
+            <RadioButton.Item label="Online and public" value="" status={albumOnlineStatusField == "public" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("public")} />
+            <RadioButton.Item label="Online and private" value="" status={albumOnlineStatusField == "private" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("private")} />
             <Button onPress={async () => {
-                await albumStore.createAlbum(db, albumNameField);
+                if (session && albumOnlineStatusField != "local")
+                    await albumStore.createOnlineAlbum(session, albumNameField, albumOnlineStatusField);
+                else
+                    await albumStore.createLocalAlbum(db, albumNameField);
                 setAlbumNameField("");
                 hideModal();
-                setAlbums(await albumStore.getAll(db));
+                await resetAlbums();
             }}><Text>Okay</Text></Button>
             <Button onPress={() => {
                 setAlbumNameField("");
