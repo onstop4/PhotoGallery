@@ -14,6 +14,7 @@ import AlbumPhotosScreen from 'screens/AlbumPhotosScreen';
 import SettingsScreen from 'screens/SettingsScreen';
 import SelectPhotosScreen from 'screens/SelectPhotosScreen';
 import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
+import CameraScreen from 'screens/CameraScreen';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -48,6 +49,7 @@ function App() {
                 </Stack.Group>
                 <Stack.Group screenOptions={{ presentation: "modal" }}>
                   <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
+                  <Stack.Screen name="CameraScreen" component={CameraScreen} />
                 </Stack.Group>
               </Stack.Navigator>
             </NavigationContainer>

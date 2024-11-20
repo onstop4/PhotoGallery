@@ -1,5 +1,4 @@
 import { Album } from "./albums";
-import { PhotoItem } from "./contexts";
 
 type ParamList = {
     MainTabs: undefined,
@@ -10,6 +9,7 @@ type ParamList = {
     AlbumPhotosScreen: { album: Album },
     SelectPhotosScreen: undefined,
     SettingsScreen: undefined
+    CameraScreen: undefined
 }
 
 export default ParamList;
