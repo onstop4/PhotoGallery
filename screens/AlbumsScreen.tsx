@@ -3,7 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Session } from "@supabase/supabase-js";
 import AlbumList from "components/AlbumList";
 import { useSQLiteContext } from "expo-sqlite";
-import { Album, useAlbumStoreContext } from "helpers/albums";
+import { Album, AlbumStore, useAlbumStoreContext } from "helpers/albums";
 import ParamList from "helpers/paramlists";
 import { supabase } from "helpers/supabase";
 import { useCallback, useEffect, useState } from "react";
@@ -14,11 +14,10 @@ type AlbumsScreenProps = NativeStackScreenProps<ParamList, "AlbumsScreen">;
 
 function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     const db = useSQLiteContext();
-    const albumStore = useAlbumStoreContext();
-    const [localAlbums, setLocalAlbums] = useState<Album[]>([]);
-    const [onlineAlbums, setOnlineAlbums] = useState<Album[]>([]);
     const [menuVisible, setMenuVisible] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const [albumStore, setAlbumStore] = useAlbumStoreContext();
+    const [session, setSession] = useState<Session | null>(null);
 
     const [albumNameField, setAlbumNameField] = useState("");
     const [albumOnlineStatusField, setAlbumOnlineStatusField] = useState<"local" | "public" | "private">("local");
@@ -30,33 +29,25 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     const showModal = () => setModalVisible(true);
     const hideModal = () => setModalVisible(false);
 
-    const [session, setSession] = useState<Session | null>(null)
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session)
+        })
 
-    // useEffect(() => {
-    //     supabase.auth.getSession().then(({ data: { session }, error }) => {
-    //         setSession(session)
-    //         resetAlbums();
-    //     })
+        supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session)
+        })
+    }, [])
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session)
-    })
-    // }, [])
+    useEffect(() => {
+        (async () => {
+            let albumStore = await new AlbumStore().refreshLocal(db);
+            setAlbumStore(albumStore);
 
-    async function resetAlbums() {
-        setLocalAlbums(await albumStore.getAllLocal(db));
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setOnlineAlbums(await albumStore.getAllOnline(session));
-    }
-
-    // useFocusEffect(useCallback(() => {
-    //     resetAlbums();
-    // }, []));
-
-    useEffect(() => { resetAlbums() }, [session])
-
-    useFocusEffect(() => { resetAlbums() });
+            if (session)
+                setAlbumStore(await albumStore.refreshOnline(session));
+        })();
+    }, [session]);
 
     useFocusEffect(() => {
         navigation.setOptions({
@@ -84,29 +75,28 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     return (<>
         <ScrollView>
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                {localAlbums.length > 0 && <List.Section>
+                {albumStore?.localAlbums.length && <List.Section>
                     <List.Subheader>Local albums</List.Subheader>
-                    <AlbumList albums={localAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
+                    <AlbumList albums={albumStore.localAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
                 </List.Section>}
-                {onlineAlbums.length > 0 && <List.Section>
+                {albumStore?.onlineAlbums.length && <List.Section>
                     <List.Subheader>Online albums</List.Subheader>
-                    <AlbumList albums={onlineAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
+                    <AlbumList albums={albumStore.onlineAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
                 </List.Section>}
             </View>
         </ScrollView>
         <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <TextInput value={albumNameField} onChangeText={setAlbumNameField} placeholder="Album name" />
             <RadioButton.Item label="Local" value="local" status={albumOnlineStatusField == "local" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("local")} />
-            <RadioButton.Item label="Online and public" value="" status={albumOnlineStatusField == "public" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("public")} />
-            <RadioButton.Item label="Online and private" value="" status={albumOnlineStatusField == "private" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("private")} />
+            <RadioButton.Item label="Online and public" value="public" status={albumOnlineStatusField == "public" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("public")} />
+            <RadioButton.Item label="Online and private" value="private" status={albumOnlineStatusField == "private" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("private")} />
             <Button onPress={async () => {
                 if (session && albumOnlineStatusField != "local")
-                    await albumStore.createOnlineAlbum(session, albumNameField, albumOnlineStatusField);
+                    setAlbumStore(await albumStore?.createOnlineAlbum(session, albumNameField, albumOnlineStatusField));
                 else
-                    await albumStore.createLocalAlbum(db, albumNameField);
+                    setAlbumStore(await albumStore?.createLocalAlbum(db, albumNameField));
                 setAlbumNameField("");
                 hideModal();
-                await resetAlbums();
             }}><Text>Okay</Text></Button>
             <Button onPress={() => {
                 setAlbumNameField("");

@@ -55,7 +55,7 @@ function CameraScreen({ navigation }: CameraScreenProps) {
 
     async function savePhoto() {
         if (photoUri) {
-            await store.addNewPhotos([{ originUri: photoUri, dateTaken: new Date() }])
+            setStore(await store.addNewPhotos([{ originUri: photoUri, dateTaken: new Date() }]))
         }
         navigation.goBack();
     }

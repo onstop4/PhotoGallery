@@ -14,7 +14,6 @@ type LocalPhotosScreenProps = NativeStackScreenProps<ParamList, "LocalPhotosScre
 function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
     const db = useSQLiteContext();
     const [store, setStore] = useStoreContext();
-    const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
 
     const [menuVisible, setMenuVisible] = useState(false);
 
@@ -23,17 +22,11 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
     const closeMenu = () => setMenuVisible(false);
 
     useFocusEffect(() => {
-        (async () => {
-            let newStore;
-            if (!(store instanceof LocalPhotoStore)) {
-                newStore = new LocalPhotoStore(db)
-                setStore(newStore);
-            } else {
-                newStore = store;
-            }
-            setPhotoItems(await newStore.getAll());
-        })();
+        if (!(store instanceof LocalPhotoStore))
+            new LocalPhotoStore(db).refresh().then(store => setStore(store));
+    });
 
+    useFocusEffect(() =>
         navigation.setOptions({
             headerRight: () =>
                 <Menu
@@ -56,8 +49,12 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
 
                         if (!result.canceled) {
                             const date = new Date();
-                            await store.addNewPhotos(result.assets.map(asset => ({ originUri: asset.uri, dateTaken: date })));
-                            setPhotoItems(await store.getAll());
+                            try {
+                                await store.addNewPhotos(result.assets.map(asset => ({ originUri: asset.uri, dateTaken: date })));
+                                setStore(await store.refresh());
+                            } catch (e) {
+                                console.log("Couldn't add photos: ", e);
+                            }
                         }
                     }} title="Add existing photos" />
                     <Menu.Item onPress={() => {
@@ -67,13 +64,12 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
                 </Menu>
 
 
-        })
-    });
+        }))
 
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Button title="Take photo" onPress={() => navigation.navigate("CameraScreen")} />
-            <PhotoGrid photoItems={photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
+            <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );
 }

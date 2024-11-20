@@ -34,27 +34,26 @@ function App() {
   const Stack = createNativeStackNavigator<ParamList>();
 
   const initialStore: [Store, React.Dispatch<React.SetStateAction<Store>>] = React.useState(new DummyPhotoStore());
-  const albumStore = new AlbumStore();
+  const albumStore = React.useState(new AlbumStore());
   const onlineStore = React.useState(new OnlinePhotoStore(null));
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      onlineStore[1](new OnlinePhotoStore(session));
+      new OnlinePhotoStore(session).refresh().then(store => onlineStore[1](store as OnlinePhotoStore));
     }
     )
 
     supabase.auth.onAuthStateChange((_event, session) => {
-      onlineStore[1](new OnlinePhotoStore(session));
-
+      new OnlinePhotoStore(session).refresh().then(store => onlineStore[1](store as OnlinePhotoStore));
     })
   }, [])
 
   return (
     <PaperProvider>
       <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
-        <OnlinePhotoStoreContext.Provider value={onlineStore}>
-          <PhotoStoreContext.Provider value={initialStore}>
-            <AlbumStoreContext.Provider value={albumStore}>
+        <AlbumStoreContext.Provider value={albumStore}>
+          <OnlinePhotoStoreContext.Provider value={onlineStore}>
+            <PhotoStoreContext.Provider value={initialStore}>
               <NavigationContainer>
                 <Stack.Navigator>
                   <Stack.Group>
@@ -68,9 +67,9 @@ function App() {
                   </Stack.Group>
                 </Stack.Navigator>
               </NavigationContainer>
-            </AlbumStoreContext.Provider>
-          </PhotoStoreContext.Provider>
-        </OnlinePhotoStoreContext.Provider>
+            </PhotoStoreContext.Provider>
+          </OnlinePhotoStoreContext.Provider>
+        </AlbumStoreContext.Provider>
       </SQLiteProvider>
     </PaperProvider>
   );

@@ -1,11 +1,12 @@
-import { copyAsync, documentDirectory, getInfoAsync } from "expo-file-system";
+import { copyAsync, documentDirectory, EncodingType, getInfoAsync, readAsStringAsync } from "expo-file-system";
 import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
 import { createContext, useContext, useState } from "react";
 import { generateRandomString } from "./generateRandomString";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "helpers/supabase";
 import { duration, shouldRefresh } from "helpers/shouldRefresh";
-import { readFile } from "helpers/files";
+import { decode } from "base64-arraybuffer";
+import * as Crypto from 'expo-crypto';
 
 type PhotoToAdd = {
     originUri: string,
@@ -58,30 +59,22 @@ class SinglePhotoNavigator {
 }
 
 abstract class Store {
-    photoItems: PhotoItem[] | undefined
-    modified = false;
+    photoItems: PhotoItem[] = [];
 
-    abstract refresh(): Promise<void>;
+    abstract refresh(): Promise<Store>;
 
     mapRows(rows: any[]): PhotoItem[] {
         return rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
     }
 
-    async getAll(): Promise<PhotoItem[]> {
-        if (!this.photoItems)
-            await this.refresh();
-
-        return this.photoItems as PhotoItem[];
-    }
-
-    async getById(id: number): Promise<PhotoItem | null> {
-        const array = await this.getAll();
+    getById(id: number) {
+        const array = this.photoItems
         const index = array.findIndex(photoItem => photoItem.id == id);
         return index > -1 ? array[index] : null;
     }
 
-    async getByIndex(index: number): Promise<PhotoItem | null> {
-        const array = await this.getAll();
+    getByIndex(index: number) {
+        const array = this.photoItems;
         return (index >= 0 && index < array.length) ? array[index] : null;
     }
 
@@ -93,34 +86,34 @@ abstract class Store {
     //     return navigator;
     // }
 
-    abstract addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<void>
+    abstract addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store>
 }
 
 class DummyPhotoStore extends Store {
-    async refresh(): Promise<void> {
-        throw new Error("Do not use.");
+    async refresh(): Promise<Store> {
+        return new DummyPhotoStore();
     }
 
-    async addNewPhotos(photos: PhotoToAdd[]): Promise<void> {
+    async addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store> {
         throw new Error("Do not use.");
-
     }
 }
 
 class LocalPhotoStore extends Store {
     db: SQLiteDatabase
 
-    constructor(db: SQLiteDatabase) {
+    constructor(db: SQLiteDatabase, photoItems: PhotoItem[] = []) {
         super();
         this.db = db;
+        this.photoItems = photoItems;
     }
 
     async refresh() {
         const rows = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo order by date_taken desc, id desc');
-        this.photoItems = this.mapRows(rows);
+        return new LocalPhotoStore(this.db, super.mapRows(rows));
     }
 
-    async addNewPhotos(photos: PhotoToAdd[]): Promise<void> {
+    async addNewPhotos(photos: PhotoToAdd[]): Promise<Store> {
         await this.db.withExclusiveTransactionAsync(async () => {
             const statement = await this.db.prepareAsync('insert into Photo (uri, date_taken) values ($uri, $dateTaken)');
             for (const photo of photos) {
@@ -139,7 +132,7 @@ class LocalPhotoStore extends Store {
             }
         })
 
-        await this.refresh();
+        return await this.refresh();
     }
 }
 
@@ -147,21 +140,13 @@ class OnlinePhotoStore extends Store {
     session: Session | null;
     timeObtained: Date | undefined
 
-    constructor(session: Session | null) {
+    constructor(session: Session | null, photoItems: PhotoItem[] = []) {
         super();
         this.session = session;
-        this.modified = true;
+        this.photoItems = photoItems;
     }
 
-    async updateSession(session: Session | null) {
-        this.session = session;
-        await this.refresh();
-        this.modified = true;
-        console.log("updated session. session is:", session && session.user.email);
-    }
-
-    async refresh(): Promise<void> {
-        console.log("refreshing");
+    async refresh(): Promise<Store> {
         if (this.session) {
             const { data, error, status } = await supabase.from('photo')
                 .select('id, uri, date_taken')
@@ -169,17 +154,16 @@ class OnlinePhotoStore extends Store {
             if (error) {
                 console.log("error in OnlinePhotoStore.refresh:", error)
                 console.log("status in OnlinePhotoStore.refresh:", status)
-                return;
+                return this;
             }
             const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
             if (resultingUrls.error) {
                 console.log("error in OnlinePhotoStore.refresh:", error)
-
                 console.log("status in OnlinePhotoStore.refresh:", status)
-                return;
+                return this;
             }
             this.timeObtained = new Date();
-            this.photoItems = data.map((item, index) => {
+            const photoItems = data.map((item, index) => {
                 const resultingUrl = resultingUrls.data[index];
                 let uri;
                 if (resultingUrl.error) {
@@ -189,21 +173,14 @@ class OnlinePhotoStore extends Store {
                     uri = resultingUrl.signedUrl;
                 return { id: item.id, uri: uri, dateTaken: item.date_taken };
             })
-            console.log(this.photoItems.length);
-            return;
+            return new OnlinePhotoStore(this.session, photoItems);
 
-        } else console.log("nope")
+        }
 
-        this.photoItems = [];
+        return this;
     }
 
-    async getAll(): Promise<PhotoItem[]> {
-        if (shouldRefresh(this.timeObtained))
-            await this.refresh();
-        return await super.getAll();
-    }
-
-    async addNewPhotos(photos: PhotoItem[]): Promise<void> {
+    async addNewPhotos(photos: PhotoItem[]): Promise<Store> {
         if (!this.session)
             throw new Error("Cannot add photos when there is session is null.");
 
@@ -211,13 +188,16 @@ class OnlinePhotoStore extends Store {
 
         for (const photo of photos) {
             let fileContents;
+            let fileContentsAsBase64;
             try {
-                fileContents = await readFile(photo.uri);
+                fileContentsAsBase64 = await readAsStringAsync(photo.uri, { encoding: EncodingType.Base64 });
+                fileContents = decode(fileContentsAsBase64);
             } catch (e) {
                 console.log(`Could not read file ${photo.uri}:`, e);
                 continue;
             }
-            const newFilename = `${this.session.user.id}/${photo.id}`;
+            const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, fileContentsAsBase64);
+            const newFilename = `${this.session.user.id}/${digest}`;
             const { data, error } = await supabase.storage.from('photos').upload(newFilename, fileContents, { contentType: "image/jpeg" });
             if (error)
                 console.log(`Could not upload file ${photo.uri} to Supabase as ${newFilename}:`, error.message);
@@ -232,8 +212,9 @@ class OnlinePhotoStore extends Store {
                 console.log("status in OnlineAlbumPhotoStore.addNewPhotos:", status);
             }
 
-            await this.refresh();
+            return await this.refresh();
         } else console.log("nothing to insert");
+        return this;
     }
 
 }
