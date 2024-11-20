@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LocalPhotosScreen from 'screens/LocalPhotosScreen';
 import SinglePhotoScreen from 'screens/SinglePhotoScreen';
 import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
-import { DummyPhotoStore, OnlinePhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
+import { DummyPhotoStore, OnlinePhotoStore, OnlinePhotoStoreContext, PhotoStoreContext, Store } from 'helpers/contexts';
 import { IconButton, PaperProvider } from 'react-native-paper';
 import ParamList from 'helpers/paramlists';
 import { AlbumStore, AlbumStoreContext } from 'helpers/albums';
@@ -15,6 +15,7 @@ import SettingsScreen from 'screens/SettingsScreen';
 import SelectPhotosScreen from 'screens/SelectPhotosScreen';
 import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 import CameraScreen from 'screens/CameraScreen';
+import { supabase } from 'helpers/supabase';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -34,27 +35,42 @@ function App() {
 
   const initialStore: [Store, React.Dispatch<React.SetStateAction<Store>>] = React.useState(new DummyPhotoStore());
   const albumStore = new AlbumStore();
+  const onlineStore = React.useState(new OnlinePhotoStore(null));
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      onlineStore[1](new OnlinePhotoStore(session));
+    }
+    )
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      onlineStore[1](new OnlinePhotoStore(session));
+
+    })
+  }, [])
 
   return (
     <PaperProvider>
       <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
-        <PhotoStoreContext.Provider value={initialStore}>
-          <AlbumStoreContext.Provider value={albumStore}>
-            <NavigationContainer>
-              <Stack.Navigator>
-                <Stack.Group>
-                  <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-                  <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
-                  <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
-                </Stack.Group>
-                <Stack.Group screenOptions={{ presentation: "modal" }}>
-                  <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
-                  <Stack.Screen name="CameraScreen" component={CameraScreen} />
-                </Stack.Group>
-              </Stack.Navigator>
-            </NavigationContainer>
-          </AlbumStoreContext.Provider>
-        </PhotoStoreContext.Provider>
+        <OnlinePhotoStoreContext.Provider value={onlineStore}>
+          <PhotoStoreContext.Provider value={initialStore}>
+            <AlbumStoreContext.Provider value={albumStore}>
+              <NavigationContainer>
+                <Stack.Navigator>
+                  <Stack.Group>
+                    <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+                    <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
+                    <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+                  </Stack.Group>
+                  <Stack.Group screenOptions={{ presentation: "modal" }}>
+                    <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
+                    <Stack.Screen name="CameraScreen" component={CameraScreen} />
+                  </Stack.Group>
+                </Stack.Navigator>
+              </NavigationContainer>
+            </AlbumStoreContext.Provider>
+          </PhotoStoreContext.Provider>
+        </OnlinePhotoStoreContext.Provider>
       </SQLiteProvider>
     </PaperProvider>
   );

@@ -1,7 +1,7 @@
 import { Button, StyleSheet, Text, View } from "react-native";
 import PhotoGrid from "components/PhotoGrid";
 import { useContext, useEffect, useState } from "react";
-import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore } from "helpers/contexts";
+import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore, useOnlineStoreContext } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
@@ -14,7 +14,7 @@ import { supabase } from "helpers/supabase";
 type OnlinePhotosScreenProps = NativeStackScreenProps<ParamList, "OnlinePhotosScreen">;
 
 function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
-    const [session, setSession] = useState<Session | undefined>();
+    const [onlineStore, setOnlineStore] = useOnlineStoreContext();
     const [store, setStore] = useStoreContext();
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
 
@@ -25,22 +25,15 @@ function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
     const closeMenu = () => setMenuVisible(false);
 
     useFocusEffect(() => {
-        if (!(store instanceof OnlinePhotoStore)) {
-            (async () => {
-                const { data, error } = await supabase.auth.getSession();
-                if (error) {
-                    console.log("Error getting session:", error.message);
-                    return;
-                }
-                if (data.session) {
-                    const newStore = new OnlinePhotoStore(data.session)
-                    setStore(newStore);
-                    newStore.getAll().then(photoItems => setPhotoItems(photoItems));
-                }
-            })();
-        } else if (store.modified) {
-            store.modified = false;
-            store.getAll().then(photoItems => setPhotoItems(photoItems));
+        console.log("here we go")
+        if (onlineStore.modified) {
+            console.log("hi")
+            onlineStore.modified = false;
+            console.log(onlineStore.modified);
+            onlineStore.getAll().then(photoItems => setPhotoItems(photoItems));
+            setStore(onlineStore);
+        } else {
+            supabase.auth.getSession().then(e => console.log("Session is:", e.data.session?.user.email))
         }
 
         navigation.setOptions({

@@ -144,15 +144,24 @@ class LocalPhotoStore extends Store {
 }
 
 class OnlinePhotoStore extends Store {
-    session: Session
+    session: Session | null;
     timeObtained: Date | undefined
 
-    constructor(session: Session) {
+    constructor(session: Session | null) {
         super();
         this.session = session;
+        this.modified = true;
+    }
+
+    async updateSession(session: Session | null) {
+        this.session = session;
+        await this.refresh();
+        this.modified = true;
+        console.log("updated session. session is:", session && session.user.email);
     }
 
     async refresh(): Promise<void> {
+        console.log("refreshing");
         if (this.session) {
             const { data, error, status } = await supabase.from('photo')
                 .select('id, uri, date_taken')
@@ -180,10 +189,10 @@ class OnlinePhotoStore extends Store {
                     uri = resultingUrl.signedUrl;
                 return { id: item.id, uri: uri, dateTaken: item.date_taken };
             })
-
+            console.log(this.photoItems.length);
             return;
 
-        }
+        } else console.log("nope")
 
         this.photoItems = [];
     }
@@ -195,6 +204,9 @@ class OnlinePhotoStore extends Store {
     }
 
     async addNewPhotos(photos: PhotoItem[]): Promise<void> {
+        if (!this.session)
+            throw new Error("Cannot add photos when there is session is null.");
+
         const toInsert = []
 
         for (const photo of photos) {
@@ -227,6 +239,7 @@ class OnlinePhotoStore extends Store {
 }
 
 const PhotoStoreContext = createContext<undefined | [Store, React.Dispatch<React.SetStateAction<Store>>]>(undefined);
+const OnlinePhotoStoreContext = createContext<undefined | [OnlinePhotoStore, React.Dispatch<React.SetStateAction<OnlinePhotoStore>>]>(undefined);
 
 function useStoreContext() {
     const found = useContext(PhotoStoreContext);
@@ -236,4 +249,12 @@ function useStoreContext() {
 
 }
 
-export { PhotoItem, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
+function useOnlineStoreContext() {
+    const found = useContext(OnlinePhotoStoreContext);
+    if (found)
+        return found;
+    throw new Error("Online store is undefined.");
+
+}
+
+export { PhotoItem, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, OnlinePhotoStoreContext, useOnlineStoreContext, DummyPhotoStore, PhotoToAdd };
