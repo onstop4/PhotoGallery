@@ -78,7 +78,7 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                         })
                 }} title="Add existing photos" />
             </Menu> */}
-            <Button title="Add existing photos" onPress={() => navigation.navigate("SelectPhotosScreen", { album: (store as AlbumPhotoStore).album })} />
+            <Button title="Add existing photos" onPress={() => navigation.navigate("SelectPhotosScreen")} />
             <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );

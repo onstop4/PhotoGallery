@@ -16,15 +16,31 @@ import SelectPhotosScreen from 'screens/SelectPhotosScreen';
 import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 import CameraScreen from 'screens/CameraScreen';
 import { supabase } from 'helpers/supabase';
+import { Session } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
+  const [session, setSession] = React.useState<Session | null>(null);
+
+  const isMobile = Platform.OS == "android" || Platform.OS == "ios";
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    }
+    )
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    })
+  }, [])
 
   return (
     <Tabs.Navigator screenOptions={{ headerShown: true, tabBarIconStyle: { display: 'none' } }}>
-      <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />
-      <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos" }} />
-      <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />
+      {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />}
+      {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos" }} />}
+      {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />}
       <Tabs.Screen name="SettingsScreen" component={SettingsScreen} />
     </Tabs.Navigator>
   );
