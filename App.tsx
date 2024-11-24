@@ -18,6 +18,7 @@ import CameraScreen from 'screens/CameraScreen';
 import { supabase } from 'helpers/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -65,29 +66,31 @@ function App() {
   }, [])
 
   return (
-    <PaperProvider>
-      <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
-        <AlbumStoreContext.Provider value={albumStore}>
-          <OnlinePhotoStoreContext.Provider value={onlineStore}>
-            <PhotoStoreContext.Provider value={initialStore}>
-              <NavigationContainer>
-                <Stack.Navigator>
-                  <Stack.Group>
-                    <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-                    <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
-                    <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
-                  </Stack.Group>
-                  <Stack.Group screenOptions={{ presentation: "modal" }}>
-                    <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
-                    <Stack.Screen name="CameraScreen" component={CameraScreen} />
-                  </Stack.Group>
-                </Stack.Navigator>
-              </NavigationContainer>
-            </PhotoStoreContext.Provider>
-          </OnlinePhotoStoreContext.Provider>
-        </AlbumStoreContext.Provider>
-      </SQLiteProvider>
-    </PaperProvider>
+    <GestureHandlerRootView>
+      <PaperProvider>
+        <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
+          <AlbumStoreContext.Provider value={albumStore}>
+            <OnlinePhotoStoreContext.Provider value={onlineStore}>
+              <PhotoStoreContext.Provider value={initialStore}>
+                <NavigationContainer>
+                  <Stack.Navigator>
+                    <Stack.Group>
+                      <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+                      <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
+                      <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+                    </Stack.Group>
+                    <Stack.Group screenOptions={{ presentation: "modal" }}>
+                      <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
+                      <Stack.Screen name="CameraScreen" component={CameraScreen} />
+                    </Stack.Group>
+                  </Stack.Navigator>
+                </NavigationContainer>
+              </PhotoStoreContext.Provider>
+            </OnlinePhotoStoreContext.Provider>
+          </AlbumStoreContext.Provider>
+        </SQLiteProvider>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -59,11 +59,11 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
                     }} title="Add existing photos" />
                     <Menu.Item onPress={() => {
                         closeMenu();
-                        navigation.navigate("CameraScreen");
+                        // Ensures that menu is closed before navigating
+                        // to prevent it from getting stuck on the screen.
+                        setTimeout(() => navigation.navigate("CameraScreen"));
                     }} title="Take photo" />
                 </Menu>
-
-
         }))
 
     return (
