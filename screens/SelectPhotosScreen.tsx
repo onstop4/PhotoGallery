@@ -1,7 +1,7 @@
 import { Button, StyleSheet, View } from "react-native";
 import PhotoGrid from "components/PhotoGrid";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, useOnlineStoreContext, OnlinePhotoStore } from "helpers/contexts";
+import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu, Text } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
@@ -16,7 +16,6 @@ type SelectPhotosScreenProps = NativeStackScreenProps<ParamList, "SelectPhotosSc
 function SelectPhotosScreen({ navigation, route }: SelectPhotosScreenProps) {
     const db = useSQLiteContext();
     const [store, setStore] = useStoreContext();
-    const [onlineStore, setOnlineStore] = useOnlineStoreContext();
     const [albumStore, setAlbumStore] = useAlbumStoreContext();
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
     const [selectedPhotoItems, setSelectedPhotoItems] = useState<PhotoItem[]>([]);
@@ -24,8 +23,15 @@ function SelectPhotosScreen({ navigation, route }: SelectPhotosScreenProps) {
 
     useFocusEffect(useCallback(() => {
         (async () => {
-            if (store instanceof AlbumPhotoStore && store.album.onlineStatus)
-                setPhotoItems(onlineStore.photoItems);
+            if (store instanceof AlbumPhotoStore && store.album.onlineStatus) {
+                const { data, error } = await supabase.auth.getSession()
+                if (error)
+                    console.log("Cannot modify online album:", error.message);
+                else if (!data.session)
+                    console.log("User is modify to access online album when they are not signed in.");
+                else
+                    setPhotoItems((await new OnlinePhotoStore(data.session).refresh()).photoItems);
+            }
             else
                 setPhotoItems((await new LocalPhotoStore(db).refresh()).photoItems);
         })();
@@ -38,8 +44,6 @@ function SelectPhotosScreen({ navigation, route }: SelectPhotosScreenProps) {
                 (async () => {
                     const newStore = await store.addNewPhotos(selectedPhotoItems);
                     setStore(newStore);
-                    if (store instanceof OnlinePhotoStore)
-                        setOnlineStore(newStore as OnlinePhotoStore);
 
                     if (store instanceof AlbumPhotoStore && store.album.onlineStatus) {
                         const { data, error } = await supabase.auth.getSession()

@@ -220,22 +220,12 @@ class OnlinePhotoStore extends Store {
 }
 
 const PhotoStoreContext = createContext<undefined | [Store, React.Dispatch<React.SetStateAction<Store>>]>(undefined);
-const OnlinePhotoStoreContext = createContext<undefined | [OnlinePhotoStore, React.Dispatch<React.SetStateAction<OnlinePhotoStore>>]>(undefined);
 
 function useStoreContext() {
     const found = useContext(PhotoStoreContext);
     if (found)
         return found;
     throw new Error("Store is undefined.");
-
 }
 
-function useOnlineStoreContext() {
-    const found = useContext(OnlinePhotoStoreContext);
-    if (found)
-        return found;
-    throw new Error("Online store is undefined.");
-
-}
-
-export { PhotoItem, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, OnlinePhotoStoreContext, useOnlineStoreContext, DummyPhotoStore, PhotoToAdd };
+export { PhotoItem, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
