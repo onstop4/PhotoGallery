@@ -68,7 +68,6 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
 
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Button title="Take photo" onPress={() => navigation.navigate("CameraScreen")} />
             <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );

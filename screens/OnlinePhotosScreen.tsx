@@ -22,9 +22,9 @@ function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
 
     const closeMenu = () => setMenuVisible(false);
 
-        function refreshStore(session: Session | null) {
-            new OnlinePhotoStore(session).refresh().then(store => setStore(store));
-        }
+    function refreshStore(session: Session | null) {
+        new OnlinePhotoStore(session).refresh().then(store => setStore(store));
+    }
 
     useEffect(() => {
         supabase.auth.onAuthStateChange((_event, session) => {
@@ -55,10 +55,7 @@ function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
     })
 
     return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Button title="Add existing photos" onPress={() => navigation.navigate("SelectPhotosScreen")} />
-            <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
-        </View>
+        <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
     );
 }
 

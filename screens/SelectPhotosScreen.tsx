@@ -38,7 +38,7 @@ function SelectPhotosScreen({ navigation, route }: SelectPhotosScreenProps) {
     }, []));
 
     return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 30 }}>
             <Button title="Done" onPress={() => {
                 setButtonDisabled(true);
                 (async () => {
