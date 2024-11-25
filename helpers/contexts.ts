@@ -1,4 +1,4 @@
-import { copyAsync, documentDirectory, EncodingType, getInfoAsync, readAsStringAsync } from "expo-file-system";
+import { copyAsync, deleteAsync, documentDirectory, EncodingType, getInfoAsync, readAsStringAsync } from "expo-file-system";
 import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
 import { createContext, useContext, useState } from "react";
 import { generateRandomString } from "./generateRandomString";
@@ -87,15 +87,21 @@ abstract class Store {
     // }
 
     abstract addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store>
+
+    abstract deletePhotos(photoItems: PhotoItem[]): Promise<Store>
 }
 
 class DummyPhotoStore extends Store {
-    async refresh(): Promise<Store> {
+    async refresh(): Promise<DummyPhotoStore> {
         return new DummyPhotoStore();
     }
 
-    async addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store> {
+    async addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<DummyPhotoStore> {
         throw new Error("Do not use.");
+    }
+
+    deletePhotos(photoItems: PhotoItem[]): Promise<DummyPhotoStore> {
+        throw new Error("Method not implemented.");
     }
 }
 
@@ -108,12 +114,12 @@ class LocalPhotoStore extends Store {
         this.photoItems = photoItems;
     }
 
-    async refresh() {
+    async refresh(): Promise<LocalPhotoStore> {
         const rows = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo order by date_taken desc, id desc');
         return new LocalPhotoStore(this.db, super.mapRows(rows));
     }
 
-    async addNewPhotos(photos: PhotoToAdd[]): Promise<Store> {
+    async addNewPhotos(photos: PhotoToAdd[]): Promise<LocalPhotoStore> {
         await this.db.withExclusiveTransactionAsync(async () => {
             const statement = await this.db.prepareAsync('insert into Photo (uri, date_taken) values ($uri, $dateTaken)');
             for (const photo of photos) {
@@ -134,6 +140,28 @@ class LocalPhotoStore extends Store {
 
         return await this.refresh();
     }
+
+    async deletePhotos(photoItems: PhotoItem[]): Promise<LocalPhotoStore> {
+        await this.db.withExclusiveTransactionAsync(async () => {
+            try {
+                const params = { $ids: photoItems.map(photoItem => photoItem.id).join(", ") };
+                const files = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri from Photo where Photo.id in ($ids)', params);
+                await this.db.runAsync('delete from Photo where Photo.id in ($ids)', params);
+                for (const row of files) {
+                    const item: any = row;
+                    try {
+                        await deleteAsync(item.uri);
+                    } catch (e) {
+                        console.log(`Removed photo ${item.id} from database but could not delete its file (${item.uri}).`)
+                    }
+                }
+            } catch (e) {
+                console.log('Could not delete selected photos from database:', e);
+            }
+        })
+
+        return await this.refresh();
+    }
 }
 
 class OnlinePhotoStore extends Store {
@@ -146,7 +174,7 @@ class OnlinePhotoStore extends Store {
         this.photoItems = photoItems;
     }
 
-    async refresh(): Promise<Store> {
+    async refresh(): Promise<OnlinePhotoStore> {
         if (this.session) {
             const { data, error, status } = await supabase.from('photo')
                 .select('id, uri, date_taken')
@@ -180,7 +208,7 @@ class OnlinePhotoStore extends Store {
         return this;
     }
 
-    async addNewPhotos(photos: PhotoItem[]): Promise<Store> {
+    async addNewPhotos(photos: PhotoItem[]): Promise<OnlinePhotoStore> {
         if (!this.session)
             throw new Error("Cannot add photos when there is session is null.");
 
@@ -208,8 +236,8 @@ class OnlinePhotoStore extends Store {
         if (toInsert.length > 0) {
             const { data, error, status } = await supabase.from("photo").insert(toInsert).select();
             if (error) {
-                console.log("error in OnlineAlbumPhotoStore.addNewPhotos:", error.message);
-                console.log("status in OnlineAlbumPhotoStore.addNewPhotos:", status);
+                console.log("error in OnlinePhotoStore.addNewPhotos:", error.message);
+                console.log("status in OnlinePhotoStore.addNewPhotos:", status);
             }
 
             return await this.refresh();
@@ -217,6 +245,22 @@ class OnlinePhotoStore extends Store {
         return this;
     }
 
+    async deletePhotos(photoItems: PhotoItem[]): Promise<OnlinePhotoStore> {
+        if (!this.session)
+            throw new Error("Cannot add photos when there is session is null.");
+
+        const { data, error, status } = await supabase.from("photo").delete().in('id', photoItems.map(photoItem => photoItem.id)).select("uri");
+        if (error) {
+            console.log("error in OnlinePhotoStore.deletePhotos:", error.message);
+            console.log("status in OnlinePhotoStore.deletePhotos:", status);
+        } else {
+            const result = await supabase.storage.from("photos").remove(data.map(item => item.uri));
+            if (result.error)
+                console.log("error in OnlinePhotoStore.deletePhotos:", error);
+        }
+
+        return this.refresh();
+    }
 }
 
 const PhotoStoreContext = createContext<undefined | [Store, React.Dispatch<React.SetStateAction<Store>>]>(undefined);

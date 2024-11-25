@@ -12,13 +12,14 @@ import { AlbumStore, AlbumStoreContext } from 'helpers/albums';
 import AlbumsScreen from 'screens/AlbumsScreen';
 import AlbumPhotosScreen from 'screens/AlbumPhotosScreen';
 import SettingsScreen from 'screens/SettingsScreen';
-import SelectPhotosScreen from 'screens/SelectPhotosScreen';
+import SelectToAddPhotosScreen from 'screens/SelectToAddPhotosScreen';
 import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 import CameraScreen from 'screens/CameraScreen';
 import { supabase } from 'helpers/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import SelectToDeletePhotosScreen from 'screens/SelectToDeletePhotosScreen';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -67,7 +68,8 @@ function App() {
                     <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
                   </Stack.Group>
                   <Stack.Group screenOptions={{ presentation: "modal" }}>
-                    <Stack.Screen name="SelectPhotosScreen" component={SelectPhotosScreen} />
+                    <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />
+                    <Stack.Screen name="SelectToDeletePhotosScreen" component={SelectToDeletePhotosScreen} />
                     <Stack.Screen name="CameraScreen" component={CameraScreen} />
                   </Stack.Group>
                 </Stack.Navigator>

@@ -49,7 +49,8 @@ function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
                         onPress={openMenu}
                     />}
                     anchorPosition="bottom">
-                    <Menu.Item onPress={() => { closeMenu(); setTimeout(() => navigation.navigate("SelectPhotosScreen")); }} title="Add existing photos" />
+                    <Menu.Item onPress={() => { closeMenu(); setTimeout(() => navigation.navigate("SelectToAddPhotosScreen")); }} title="Add existing photos" />
+                    <Menu.Item onPress={() => { closeMenu(); setTimeout(() => navigation.navigate("SelectToDeletePhotosScreen")); }} title="Delete photos" />
                 </Menu>
         })
     })

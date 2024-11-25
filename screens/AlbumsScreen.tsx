@@ -45,7 +45,7 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
             setAlbumStore(albumStore);
 
             if (session)
-                setAlbumStore(await albumStore.refreshOnline(session));
+                setAlbumStore(await albumStore.refreshOnline());
         })();
     }, [session]);
 
@@ -68,9 +68,6 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
 
         })
     })
-
-
-
 
     return (<>
         <ScrollView>

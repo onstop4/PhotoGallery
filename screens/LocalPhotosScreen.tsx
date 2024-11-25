@@ -63,6 +63,7 @@ function LocalPhotosScreen({ navigation }: LocalPhotosScreenProps) {
                         // to prevent it from getting stuck on the screen.
                         setTimeout(() => navigation.navigate("CameraScreen"));
                     }} title="Take photo" />
+                    <Menu.Item onPress={() => { closeMenu(); setTimeout(() => navigation.navigate("SelectToDeletePhotosScreen")); }} title="Delete photos" />
                 </Menu>
         }))
 

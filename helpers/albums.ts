@@ -34,14 +34,12 @@ class LocalAlbumPhotoStore extends AlbumPhotoStore {
         this.photoItems = photoItems;
     }
 
-    async refresh(): Promise<Store> {
-        const statement = await this.db.prepareAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo inner join AlbumPhoto on Photo.id = AlbumPhoto.photo_id where AlbumPhoto.album_id = $albumId order by date_taken desc, id desc');
-        const result = await statement.executeAsync({ $albumId: this.album.id });
-        const rows = await result.getAllAsync();
+    async refresh(): Promise<LocalAlbumPhotoStore> {
+        const rows = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo inner join AlbumPhoto on Photo.id = AlbumPhoto.photo_id where AlbumPhoto.album_id = $albumId order by date_taken desc, id desc', { $albumId: this.album.id });
         return new LocalAlbumPhotoStore(this.album, this.db, this.mapRows(rows));
     }
 
-    async addNewPhotos(photos: PhotoItem[]): Promise<Store> {
+    async addNewPhotos(photos: PhotoItem[]): Promise<LocalAlbumPhotoStore> {
         await this.db.withExclusiveTransactionAsync(async () => {
             try {
                 const statement = await this.db.prepareAsync('insert into AlbumPhoto (photo_id, album_id) values ($photoId, $albumId)');
@@ -50,6 +48,17 @@ class LocalAlbumPhotoStore extends AlbumPhotoStore {
                 }
             } catch (e) {
                 console.log('Could not add photos to album:', e)
+            }
+        })
+        return await this.refresh();
+    }
+
+    async deletePhotos(photoItems: PhotoItem[]): Promise<LocalAlbumPhotoStore> {
+        await this.db.withExclusiveTransactionAsync(async () => {
+            try {
+                await this.db.runAsync('delete from AlbumPhoto where AlbumPhoto.photo_id in ($ids)', { $ids: photoItems.map(photoItem => photoItem.id).join(", ") });
+            } catch (e) {
+                console.log('Could not delete selected albumphotos from database.');
             }
         })
         return await this.refresh();
@@ -66,7 +75,7 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
         this.photoItems = photoItems;
     }
 
-    async refresh(): Promise<Store> {
+    async refresh(): Promise<OnlineAlbumPhotoStore> {
         if (this.session) {
             const { data, error, status } = await supabase.from('photo')
                 .select('id, uri, date_taken, album!inner(id)')
@@ -75,37 +84,46 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
             if (error) {
                 console.log("error in OnlineAlbumPhotoStore.refresh:", error)
                 console.log("status in OnlineAlbumPhotoStore.refresh:", status)
-            } else {
+            } else if (data.length > 0) {
                 const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
-                if (resultingUrls.error) {
-                    console.log("error in OnlinePhotoStore.refresh:", error)
-                    console.log("status in OnlinePhotoStore.refresh:", status)
-                    return this;
-                }
-                this.timeObtained = new Date();
-                const photoItems = data.flatMap((item, index) => {
-                    const resultingUrl = resultingUrls.data[index];
-                    if (resultingUrl.error) {
-                        console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
-                        return [];
-                    }
-                    const uri = resultingUrl.signedUrl;
-                    return { id: item.id, uri: uri, dateTaken: item.date_taken };
-                })
-                return new OnlineAlbumPhotoStore(this.album, this.session, photoItems);
+                if (!resultingUrls.error) {
+                    this.timeObtained = new Date();
+                    const photoItems = data.flatMap((item, index) => {
+                        const resultingUrl = resultingUrls.data[index];
+                        if (resultingUrl.error) {
+                            console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
+                            return [];
+                        }
+                        const uri = resultingUrl.signedUrl;
+                        return { id: item.id, uri: uri, dateTaken: item.date_taken };
+                    })
+                    return new OnlineAlbumPhotoStore(this.album, this.session, photoItems);
+                } else
+                    console.log("error in OnlineAlbumPhotoStore.refresh:", resultingUrls.error)
             }
         }
 
-        return this;
+        return new OnlineAlbumPhotoStore(this.album, this.session, []);
     }
 
-    async addNewPhotos(photos: PhotoItem[]): Promise<Store> {
+    async addNewPhotos(photos: PhotoItem[]): Promise<OnlineAlbumPhotoStore> {
         if (photos.length > 0) {
             const toInsert = photos.map(({ id }) => ({ photo_id: id, album_id: this.album.id }));
             await supabase.from("albumphoto").insert(toInsert);
             return await this.refresh();
         } else console.log("nothing to insert");
         return this;
+    }
+
+    async deletePhotos(photoItems: PhotoItem[]): Promise<OnlineAlbumPhotoStore> {
+        const { error, status } = await supabase.from("albumphoto").delete().in('photo_id', photoItems.map(photoItem => photoItem.id));
+
+        if (error) {
+            console.log("error in OnlineAlbumPhotoStore.deletePhotos:", error.message);
+            console.log("status in OnlineAlbumPhotoStore.deletePhotos:", status);
+        }
+
+        return await this.refresh();
     }
 }
 
@@ -124,35 +142,45 @@ class AlbumStore {
         return new AlbumStore(albums, this.onlineAlbums);
     }
 
-    async refreshOnline(session: Session | null): Promise<AlbumStore> {
+    async refreshOnline(): Promise<AlbumStore> {
         let onlineAlbums: Album[] = [];
 
-        if (session) {
-            const { data, error, status } = await supabase.from('album')
-                .select('id, name, is_public, albumphoto(count)')
-                .order('name', { ascending: true });
-            if (error) {
-                console.log("error in refreshOnline:", error)
-                console.log("status in refreshOnline:", status)
-            } else {
-                onlineAlbums = data.map(({ id, name, is_public, albumphoto: [{ count }] }) => ({ id: id, name: name, onlineStatus: is_public ? "public" : "private", photoQuantity: count }));
-            }
+        const { data, error, status } = await supabase.from('album')
+            .select('id, name, is_public, albumphoto(count)')
+            .order('name', { ascending: true });
+        if (error) {
+            console.log("error in AlbumStore.refreshOnline:", error)
+            console.log("status in AlbumStore.refreshOnline:", status)
+        } else {
+            onlineAlbums = data.map(({ id, name, is_public, albumphoto: [{ count }] }) => ({ id: id, name: name, onlineStatus: is_public ? "public" : "private", photoQuantity: count }));
         }
 
         return new AlbumStore(this.localAlbums, onlineAlbums);
     }
 
-    async createLocalAlbum(db: SQLiteDatabase, name: string) {
+    async createLocalAlbum(db: SQLiteDatabase, name: string): Promise<AlbumStore> {
         const statement = await db.prepareAsync("insert into Album (name) values ($albumName)");
         await statement.executeAsync({ $albumName: name });
         return await this.refreshLocal(db);
     }
 
-    async createOnlineAlbum(session: Session, name: string, onlineStatus: undefined | OnlineStatus) {
+    async createOnlineAlbum(session: Session, name: string, onlineStatus: undefined | OnlineStatus): Promise<AlbumStore> {
         const { error } = await supabase.from('album').insert({ user_id: session.user.id, name: name, is_public: onlineStatus == "public" });
         if (error)
-            console.log("error in createOnlineAlbum:", error.message)
-        return await this.refreshOnline(session);
+            console.log("error in AlbumStore.createOnlineAlbum:", error.message)
+        return await this.refreshOnline();
+    }
+
+    async deleteLocalAlbum(db: SQLiteDatabase, album: Album): Promise<AlbumStore> {
+        await db.runAsync("delete from Album where Album.id = $id", { $id: album.id });
+        return await this.refreshLocal(db);
+    }
+
+    async deleteOnlineAlbum(album: Album): Promise<AlbumStore> {
+        const { error } = await supabase.from('album').delete().eq('id', album.id);
+        if (error)
+            console.log("error in AlbumStore.deleteOnlineAlbum:", error.message)
+        return await this.refreshOnline();
     }
 }
 

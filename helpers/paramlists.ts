@@ -7,7 +7,8 @@ type ParamList = {
     SinglePhotoScreen: { id: number },
     AlbumsScreen: undefined;
     AlbumPhotosScreen: { album: Album },
-    SelectPhotosScreen: undefined,
+    SelectToAddPhotosScreen: undefined,
+    SelectToDeletePhotosScreen: undefined,
     SettingsScreen: undefined
     CameraScreen: undefined
 }

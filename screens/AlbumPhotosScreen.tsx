@@ -7,7 +7,7 @@ import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
 import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
-import { AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore } from "helpers/albums";
+import { AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, useAlbumStoreContext } from "helpers/albums";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "helpers/supabase";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -23,6 +23,7 @@ function areEqual(store1: AlbumPhotoStore, store2: AlbumPhotoStore) {
 function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
     const db = useSQLiteContext();
     const [store, setStore] = useStoreContext();
+    const [albumStore, setAlbumStore] = useAlbumStoreContext();
     const [storeToCompare, setStoreToCompare] = useState<AlbumPhotoStore>();
 
     const [menuVisible, setMenuVisible] = useState(false);
@@ -47,21 +48,20 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
             (async () => {
                 const album = route.params.album;
                 navigation.setOptions({ title: album.name });
+                let newStore = new DummyPhotoStore();
                 if (album.onlineStatus) {
                     const { data, error } = await supabase.auth.getSession()
-                    if (error) {
+                    if (error)
                         console.log("Cannot get online album:", error.message);
-                        setStore(new DummyPhotoStore());
-                    } else if (!data.session) {
+                    else if (!data.session)
                         console.log("User is attempting to access online album when they are not signed in.");
-                        setStore(new DummyPhotoStore());
-                    } else {
-                        const newStore = await new OnlineAlbumPhotoStore(album, data.session).refresh();
-                        setStore(newStore);
-                        setStoreToCompare(newStore as AlbumPhotoStore);
-                    }
+                    else
+                        newStore = await new OnlineAlbumPhotoStore(album, data.session).refresh();
                 } else
-                    setStore(await new LocalAlbumPhotoStore(album, db).refresh());
+                    newStore = await new LocalAlbumPhotoStore(album, db).refresh();
+
+                setStore(newStore);
+                setStoreToCompare(newStore as AlbumPhotoStore);
             })();
         }
 
@@ -83,7 +83,25 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                 onDismiss={closeMenu}
                 anchor={menuAnchor}
                 anchorPosition="bottom">
-                <Menu.Item onPress={() => navigation.navigate("SelectPhotosScreen")} title="Add existing photos" />
+                <Menu.Item onPress={() => {
+                    closeMenu();
+                    setTimeout(() => navigation.navigate("SelectToAddPhotosScreen"))
+                }} title="Add existing photos" />
+                <Menu.Item onPress={() => {
+                    closeMenu();
+                    setTimeout(() => navigation.navigate("SelectToDeletePhotosScreen"));
+                }} title="Remove photos" />
+                <Menu.Item onPress={async () => {
+                    closeMenu();
+                    if (store instanceof AlbumPhotoStore) {
+                        const album = store.album;
+                        if (album.onlineStatus)
+                            setAlbumStore(await albumStore.deleteOnlineAlbum(album));
+                        else
+                            setAlbumStore(await albumStore.deleteLocalAlbum(db, album));
+                    }
+                    setTimeout(() => navigation.goBack());
+                }} title="Delete album" />
             </Menu>
             <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
