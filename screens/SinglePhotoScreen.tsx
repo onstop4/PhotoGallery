@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSQLiteContext } from "expo-sqlite";
 import { PhotoItem, PhotoItemResult, PhotoStoreContext, useStoreContext } from "helpers/contexts";
@@ -5,6 +6,7 @@ import RootStackParamList from "helpers/paramlists";
 import { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { IconButton } from "react-native-paper";
 import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 
 type SinglePhotoScreenProps = NativeStackScreenProps<RootStackParamList, "SinglePhotoScreen">;
@@ -59,6 +61,35 @@ function SinglePhotoScreen({ route, navigation }: SinglePhotoScreenProps) {
         }
         )();
     }, []);
+
+    useFocusEffect(() => navigation.setOptions({
+        headerRight: () =>
+            <IconButton
+                icon="delete-outline"
+                size={30}
+                onPressOut={async () => {
+                    if (found) {
+                        const newStore = await store.deletePhotos([found.photoItem]);
+                        setStore(newStore);
+                        const storeLength = newStore.photoItems.length;
+                        // If there are no PhotoItems left, then user will go back to
+                        // previous screen.
+                        if (storeLength === 0) {
+                            navigation.goBack();
+                            return;
+                        }
+                        // If there are any more PhotoItems to the right of the one that was
+                        // just deleted, then the user will be shown the next one. Otherwise,
+                        // the user will be shown the one to the left.
+                        const newIndex = storeLength <= found.index ? storeLength - 1 : found.index;
+                        const newPhotoItem = newStore.getByIndex(newIndex);
+                        if (!newPhotoItem)
+                            console.log(`Something went wrong in SinglePhotoScreen. Requested index ${newIndex} when length is ${storeLength}.`);
+                        else
+                            updateFound({ index: newIndex, photoItem: newPhotoItem });
+                    }
+                }} />
+    }))
 
     return <>
         {found &&

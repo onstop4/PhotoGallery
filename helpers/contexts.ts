@@ -19,45 +19,6 @@ type PhotoItem = {
     dateTaken: Date;
 };
 
-// interface Store {
-//     getAll(): Promise<PhotoItem[]>;
-//     // getById(id: number): Promise<SinglePhotoNavigator>;
-// }
-
-class SinglePhotoNavigator {
-    array: PhotoItem[];
-    index: number;
-
-    private constructor(array: PhotoItem[], index: number) {
-        this.array = array;
-        this.index = index;
-    }
-
-    static getValid(array: PhotoItem[] | undefined, index: number) {
-        if (array && 0 <= index && index < array.length)
-            return new SinglePhotoNavigator(array, index);
-        return null;
-    }
-
-    next() {
-        const newIndex = this.index++;
-        if (0 <= newIndex && newIndex < this.array.length)
-            return new SinglePhotoNavigator(this.array, newIndex);
-        return null;
-    }
-
-    previous() {
-        const newIndex = this.index--;
-        if (0 <= newIndex && newIndex < this.array.length)
-            return new SinglePhotoNavigator(this.array, newIndex);
-        return null;
-    }
-
-    getCurrentPhotoItem() {
-        return [this.index, this.array[this.index]];
-    }
-}
-
 type PhotoItemResult = { index: number, photoItem: PhotoItem };
 
 abstract class Store {
@@ -80,14 +41,6 @@ abstract class Store {
         const array = this.photoItems;
         return (index >= 0 && index < array.length) ? array[index] : null;
     }
-
-    // async getById(id: number): Promise<SinglePhotoNavigator> {
-    //     const array = await this.getAll();
-    //     const navigator = SinglePhotoNavigator.getValid(array, array.findIndex(photoItem => photoItem.id == id));
-    //     if (!navigator)
-    //         throw new Error("Something went wrong with AbstractBaseStore and SinglePhotoNavigator.");
-    //     return navigator;
-    // }
 
     abstract addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store>
 
