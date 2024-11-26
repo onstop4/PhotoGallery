@@ -95,7 +95,7 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
                             return [];
                         }
                         const uri = resultingUrl.signedUrl;
-                        return { id: item.id, uri: uri, dateTaken: item.date_taken };
+                        return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
                     })
                     return new OnlineAlbumPhotoStore(this.album, this.session, photoItems);
                 } else

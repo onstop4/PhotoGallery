@@ -58,7 +58,10 @@ class SinglePhotoNavigator {
     }
 }
 
+type PhotoItemResult = { index: number, photoItem: PhotoItem };
+
 abstract class Store {
+
     photoItems: PhotoItem[] = [];
 
     abstract refresh(): Promise<Store>;
@@ -67,10 +70,10 @@ abstract class Store {
         return rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
     }
 
-    getById(id: number) {
+    getById(id: number): PhotoItemResult | null {
         const array = this.photoItems
         const index = array.findIndex(photoItem => photoItem.id == id);
-        return index > -1 ? array[index] : null;
+        return index > -1 ? { index, photoItem: array[index] } : null;
     }
 
     getByIndex(index: number) {
@@ -199,7 +202,7 @@ class OnlinePhotoStore extends Store {
                     uri = "";
                 } else
                     uri = resultingUrl.signedUrl;
-                return { id: item.id, uri: uri, dateTaken: item.date_taken };
+                return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
             })
             return new OnlinePhotoStore(this.session, photoItems);
 
@@ -272,4 +275,4 @@ function useStoreContext() {
     throw new Error("Store is undefined.");
 }
 
-export { PhotoItem, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
+export { PhotoItem, PhotoItemResult, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
