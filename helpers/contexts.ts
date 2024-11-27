@@ -1,5 +1,5 @@
 import { copyAsync, deleteAsync, documentDirectory, EncodingType, getInfoAsync, readAsStringAsync } from "expo-file-system";
-import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
+import { SQLiteDatabase } from "expo-sqlite";
 import { createContext, useContext, useState } from "react";
 import { generateRandomString } from "./generateRandomString";
 import { Session } from "@supabase/supabase-js";
@@ -9,7 +9,7 @@ import { decode } from "base64-arraybuffer";
 import * as Crypto from 'expo-crypto';
 
 type PhotoToAdd = {
-    originUri: string,
+    uri: string,
     dateTaken: Date
 }
 
@@ -19,7 +19,7 @@ type PhotoItem = {
     dateTaken: Date;
 };
 
-type PhotoItemResult = { index: number, photoItem: PhotoItem };
+type PhotoItemResult = { index: number, photoItem: PhotoItem } | undefined;
 
 abstract class Store {
 
@@ -31,15 +31,15 @@ abstract class Store {
         return rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
     }
 
-    getById(id: number): PhotoItemResult | null {
+    getById(id: number): PhotoItemResult {
         const array = this.photoItems
         const index = array.findIndex(photoItem => photoItem.id == id);
-        return index > -1 ? { index, photoItem: array[index] } : null;
+        return index > -1 ? { index, photoItem: array[index] } : undefined;
     }
 
-    getByIndex(index: number) {
+    getByIndex(index: number): PhotoItem | undefined {
         const array = this.photoItems;
-        return (index >= 0 && index < array.length) ? array[index] : null;
+        return (index >= 0 && index < array.length) ? array[index] : undefined;
     }
 
     abstract addNewPhotos(photos: PhotoToAdd[] | PhotoItem[]): Promise<Store>
@@ -79,7 +79,7 @@ class LocalPhotoStore extends Store {
         await this.db.withExclusiveTransactionAsync(async () => {
             const statement = await this.db.prepareAsync('insert into Photo (uri, date_taken) values ($uri, $dateTaken)');
             for (const photo of photos) {
-                const oldUri = photo.originUri;
+                const oldUri = photo.uri;
                 const dateTakenIso = photo.dateTaken.toISOString();
                 let newUri;
                 do {
@@ -140,31 +140,31 @@ class OnlinePhotoStore extends Store {
                 console.log("status in OnlinePhotoStore.refresh:", status)
                 return this;
             }
-            const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
-            if (resultingUrls.error) {
-                console.log("error in OnlinePhotoStore.refresh:", error)
-                console.log("status in OnlinePhotoStore.refresh:", status)
-                return this;
+            if (data.length > 0) {
+                const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
+                if (!resultingUrls.error) {
+                    this.timeObtained = new Date();
+                    const photoItems = data.map((item, index) => {
+                        const resultingUrl = resultingUrls.data[index];
+                        let uri;
+                        if (resultingUrl.error) {
+                            console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
+                            uri = "";
+                        } else
+                            uri = resultingUrl.signedUrl;
+                        return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
+                    })
+                    return new OnlinePhotoStore(this.session, photoItems);
+                } else {
+                    console.log("error in OnlinePhotoStore.refresh:", resultingUrls.error);
+                    return this;
+                }
             }
-            this.timeObtained = new Date();
-            const photoItems = data.map((item, index) => {
-                const resultingUrl = resultingUrls.data[index];
-                let uri;
-                if (resultingUrl.error) {
-                    console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
-                    uri = "";
-                } else
-                    uri = resultingUrl.signedUrl;
-                return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
-            })
-            return new OnlinePhotoStore(this.session, photoItems);
-
         }
-
-        return this;
+        return new OnlinePhotoStore(this.session, []);
     }
 
-    async addNewPhotos(photos: PhotoItem[]): Promise<OnlinePhotoStore> {
+    async addNewPhotos(photos: PhotoItem[] | PhotoToAdd[]): Promise<OnlinePhotoStore> {
         if (!this.session)
             throw new Error("Cannot add photos when there is session is null.");
 
@@ -174,12 +174,14 @@ class OnlinePhotoStore extends Store {
             let fileContents;
             let fileContentsAsBase64;
             try {
-                fileContentsAsBase64 = await readAsStringAsync(photo.uri, { encoding: EncodingType.Base64 });
+                fileContentsAsBase64 = photo.uri.startsWith("file:///")
+                    ? await readAsStringAsync(photo.uri, { encoding: EncodingType.Base64 })
+                    : photo.uri.substring(photo.uri.indexOf(",") + 1);
                 fileContents = decode(fileContentsAsBase64);
             } catch (e) {
                 console.log(`Could not read file ${photo.uri}:`, e);
                 continue;
-            }
+            };
             const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, fileContentsAsBase64);
             const newFilename = `${this.session.user.id}/${digest}`;
             const { data, error } = await supabase.storage.from('photos').upload(newFilename, fileContents, { contentType: "image/jpeg" });

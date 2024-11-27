@@ -2,9 +2,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Session } from "@supabase/supabase-js";
 import AlbumList from "components/AlbumList";
-import { useSQLiteContext } from "expo-sqlite";
 import { Album, AlbumStore, useAlbumStoreContext } from "helpers/albums";
 import ParamList from "helpers/paramlists";
+import trySQLiteContext from "helpers/sqlite";
 import { supabase } from "helpers/supabase";
 import { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -13,7 +13,7 @@ import { Button, IconButton, List, Menu, Modal, Portal, RadioButton, Text, TextI
 type AlbumsScreenProps = NativeStackScreenProps<ParamList, "AlbumsScreen">;
 
 function AlbumsScreen({ navigation }: AlbumsScreenProps) {
-    const db = useSQLiteContext();
+    const db = trySQLiteContext();
     const [menuVisible, setMenuVisible] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [albumStore, setAlbumStore] = useAlbumStoreContext();
@@ -41,8 +41,10 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
 
     useEffect(() => {
         (async () => {
-            let albumStore = await new AlbumStore().refreshLocal(db);
-            setAlbumStore(albumStore);
+            let albumStore = await new AlbumStore();
+
+            if (db)
+                setAlbumStore(await albumStore.refreshLocal(db));
 
             if (session)
                 setAlbumStore(await albumStore.refreshOnline());
@@ -90,7 +92,7 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
             <Button onPress={async () => {
                 if (session && albumOnlineStatusField != "local")
                     setAlbumStore(await albumStore?.createOnlineAlbum(session, albumNameField, albumOnlineStatusField));
-                else
+                else if (db)
                     setAlbumStore(await albumStore?.createLocalAlbum(db, albumNameField));
                 setAlbumNameField("");
                 hideModal();

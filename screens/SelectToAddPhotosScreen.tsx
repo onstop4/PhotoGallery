@@ -5,16 +5,16 @@ import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu, Text } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
-import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
 import { useFocusEffect } from "@react-navigation/native";
 import { AlbumPhotoStore, useAlbumStoreContext } from "helpers/albums";
 import { supabase } from "helpers/supabase";
+import trySQLiteContext from "helpers/sqlite";
 
 type SelectToAddPhotosScreenProps = NativeStackScreenProps<ParamList, "SelectToAddPhotosScreen">;
 
 function SelectToAddPhotosScreen({ navigation, route }: SelectToAddPhotosScreenProps) {
-    const db = useSQLiteContext();
+    const db = trySQLiteContext();
     const [store, setStore] = useStoreContext();
     const [albumStore, setAlbumStore] = useAlbumStoreContext();
     const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
@@ -32,7 +32,7 @@ function SelectToAddPhotosScreen({ navigation, route }: SelectToAddPhotosScreenP
                 else
                     setPhotoItems((await new OnlinePhotoStore(data.session).refresh()).photoItems);
             }
-            else
+            else if (db)
                 setPhotoItems((await new LocalPhotoStore(db).refresh()).photoItems);
         })();
     }, []));
@@ -53,7 +53,7 @@ function SelectToAddPhotosScreen({ navigation, route }: SelectToAddPhotosScreenP
                             console.log("User is modify to access online album when they are not signed in.");
                         else
                             setAlbumStore(await albumStore.refreshOnline());
-                    } else if (store instanceof AlbumPhotoStore)
+                    } else if (store instanceof AlbumPhotoStore && db)
                         setAlbumStore(await albumStore.refreshLocal(db));
 
                     navigation.goBack();

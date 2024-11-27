@@ -4,9 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LocalPhotosScreen from 'screens/LocalPhotosScreen';
 import SinglePhotoScreen from 'screens/SinglePhotoScreen';
-import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 import { DummyPhotoStore, PhotoStoreContext, Store } from 'helpers/contexts';
-import { IconButton, PaperProvider } from 'react-native-paper';
+import { PaperProvider } from 'react-native-paper';
 import ParamList from 'helpers/paramlists';
 import { AlbumStore, AlbumStoreContext } from 'helpers/albums';
 import AlbumsScreen from 'screens/AlbumsScreen';
@@ -17,15 +17,13 @@ import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 import CameraScreen from 'screens/CameraScreen';
 import { supabase } from 'helpers/supabase';
 import { Session } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SelectToDeletePhotosScreen from 'screens/SelectToDeletePhotosScreen';
+import { isMobile } from 'helpers/isMobile';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
   const [session, setSession] = React.useState<Session | null>(null);
-
-  const isMobile = Platform.OS == "android" || Platform.OS == "ios";
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,32 +52,42 @@ function App() {
   const initialStore: [Store, React.Dispatch<React.SetStateAction<Store>>] = React.useState(new DummyPhotoStore());
   const albumStore = React.useState(new AlbumStore());
 
-  return (
-    <GestureHandlerRootView>
+  const common = <AlbumStoreContext.Provider value={albumStore}>
+    <PhotoStoreContext.Provider value={initialStore}>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Group>
+            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+            <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
+            <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+          </Stack.Group>
+          <Stack.Group screenOptions={{ presentation: "modal" }}>
+            <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />
+            <Stack.Screen name="SelectToDeletePhotosScreen" component={SelectToDeletePhotosScreen} />
+            <Stack.Screen name="CameraScreen" component={CameraScreen} />
+          </Stack.Group>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </PhotoStoreContext.Provider>
+  </AlbumStoreContext.Provider>;
+
+  if (isMobile) {
+    const { SQLiteProvider } = require('expo-sqlite');
+
+    return <GestureHandlerRootView>
       <PaperProvider>
         <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
-          <AlbumStoreContext.Provider value={albumStore}>
-            <PhotoStoreContext.Provider value={initialStore}>
-              <NavigationContainer>
-                <Stack.Navigator>
-                  <Stack.Group>
-                    <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-                    <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
-                    <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
-                  </Stack.Group>
-                  <Stack.Group screenOptions={{ presentation: "modal" }}>
-                    <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />
-                    <Stack.Screen name="SelectToDeletePhotosScreen" component={SelectToDeletePhotosScreen} />
-                    <Stack.Screen name="CameraScreen" component={CameraScreen} />
-                  </Stack.Group>
-                </Stack.Navigator>
-              </NavigationContainer>
-            </PhotoStoreContext.Provider>
-          </AlbumStoreContext.Provider>
+          {common}
         </SQLiteProvider>
       </PaperProvider>
     </GestureHandlerRootView>
-  );
+  }
+
+  return <GestureHandlerRootView>
+    <PaperProvider>
+      {common}
+    </PaperProvider>
+  </GestureHandlerRootView>
 }
 
 export default App;

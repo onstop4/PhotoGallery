@@ -5,12 +5,12 @@ import { Store, PhotoItem, PhotoStoreContext, useStoreContext, DummyPhotoStore }
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
-import { useSQLiteContext } from "expo-sqlite";
 import ParamList from "helpers/paramlists";
 import { AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, useAlbumStoreContext } from "helpers/albums";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "helpers/supabase";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import trySQLiteContext from "helpers/sqlite";
 
 type AlbumPhotosScreenProps = NativeStackScreenProps<ParamList, "AlbumPhotosScreen">;
 
@@ -21,7 +21,7 @@ function areEqual(store1: AlbumPhotoStore, store2: AlbumPhotoStore) {
 }
 
 function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
-    const db = useSQLiteContext();
+    const db = trySQLiteContext();
     const [store, setStore] = useStoreContext();
     const [albumStore, setAlbumStore] = useAlbumStoreContext();
     const [storeToCompare, setStoreToCompare] = useState<AlbumPhotoStore>();
@@ -57,7 +57,7 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                         console.log("User is attempting to access online album when they are not signed in.");
                     else
                         newStore = await new OnlineAlbumPhotoStore(album, data.session).refresh();
-                } else
+                } else if (db)
                     newStore = await new LocalAlbumPhotoStore(album, db).refresh();
 
                 setStore(newStore);
@@ -97,7 +97,7 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                         const album = store.album;
                         if (album.onlineStatus)
                             setAlbumStore(await albumStore.deleteOnlineAlbum(album));
-                        else
+                        else if (db)
                             setAlbumStore(await albumStore.deleteLocalAlbum(db, album));
                     }
                     setTimeout(() => navigation.goBack());
@@ -106,8 +106,6 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
             <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
         </View>
     );
-
-
 }
 
 export default AlbumPhotosScreen;
