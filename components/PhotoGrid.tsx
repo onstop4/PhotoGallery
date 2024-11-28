@@ -1,8 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
 import { FC, useContext, useState } from "react";
-import { StyleSheet, Image, View, TouchableOpacity, Text, FlatList } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
+import { StyleSheet, Image, View, TouchableOpacity, Text, FlatList, ScrollView } from "react-native";
 import { Checkbox } from "react-native-paper";
 
 type action = (photoItem: PhotoItem) => void;

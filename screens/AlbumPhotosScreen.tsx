@@ -9,7 +9,6 @@ import ParamList from "helpers/paramlists";
 import { AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, useAlbumStoreContext } from "helpers/albums";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "helpers/supabase";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import trySQLiteContext from "helpers/sqlite";
 
 type AlbumPhotosScreenProps = NativeStackScreenProps<ParamList, "AlbumPhotosScreen">;
@@ -41,8 +40,6 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
         setTimeout(() => openMenu());
     }
 
-    const tap = Gesture.Tap().runOnJS(true);
-
     useFocusEffect(() => {
         if (!(store instanceof AlbumPhotoStore && storeToCompare && areEqual(store, storeToCompare))) {
             (async () => {
@@ -66,13 +63,11 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
         }
 
         navigation.setOptions({
-            headerRight: () => <GestureDetector gesture={tap}>
-                <IconButton
-                    icon="dots-vertical"
-                    size={30}
-                    onPressOut={onIconPress}
-                />
-            </GestureDetector>
+            headerRight: () => <IconButton
+                icon="dots-vertical"
+                size={30}
+                onPressOut={onIconPress}
+            />
         })
     })
 

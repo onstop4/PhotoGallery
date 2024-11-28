@@ -17,9 +17,8 @@ import OnlinePhotosScreen from 'screens/OnlinePhotosScreen';
 import CameraScreen from 'screens/CameraScreen';
 import { supabase } from 'helpers/supabase';
 import { Session } from '@supabase/supabase-js';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SelectToDeletePhotosScreen from 'screens/SelectToDeletePhotosScreen';
-import { isMobile } from 'helpers/isMobile';
+import isMobile from 'helpers/isMobile';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -74,20 +73,16 @@ function App() {
   if (isMobile) {
     const { SQLiteProvider } = require('expo-sqlite');
 
-    return <GestureHandlerRootView>
-      <PaperProvider>
-        <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
-          {common}
-        </SQLiteProvider>
-      </PaperProvider>
-    </GestureHandlerRootView>
+    return <PaperProvider>
+      <SQLiteProvider databaseName="local.db" onInit={migrateDbIfNeeded}>
+        {common}
+      </SQLiteProvider>
+    </PaperProvider>
   }
 
-  return <GestureHandlerRootView>
-    <PaperProvider>
-      {common}
-    </PaperProvider>
-  </GestureHandlerRootView>
+  return <PaperProvider>
+    {common}
+  </PaperProvider>
 }
 
 export default App;

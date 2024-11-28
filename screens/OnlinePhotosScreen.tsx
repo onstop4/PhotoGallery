@@ -9,7 +9,7 @@ import ParamList from "helpers/paramlists";
 import { useFocusEffect } from "@react-navigation/native";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "helpers/supabase";
-import { isMobile } from "helpers/isMobile";
+import isMobile from "helpers/isMobile";
 
 type OnlinePhotosScreenProps = NativeStackScreenProps<ParamList, "OnlinePhotosScreen">;
 
