@@ -19,6 +19,8 @@ import { supabase } from 'helpers/supabase';
 import { Session } from '@supabase/supabase-js';
 import SelectToDeletePhotosScreen from 'screens/SelectToDeletePhotosScreen';
 import isMobile from 'helpers/isMobile';
+import PublicAlbumInputScreen from 'screens/PublicAlbumInputScreen';
+import PublicAlbumPhotosScreen from 'screens/PublicAlbumPhotosScreen';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -40,6 +42,7 @@ function MainTabs() {
       {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />}
       {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos" }} />}
       {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />}
+      {session && <Tabs.Screen name="PublicAlbumInputScreen" component={PublicAlbumInputScreen} />}
       <Tabs.Screen name="SettingsScreen" component={SettingsScreen} />
     </Tabs.Navigator>
   );
@@ -59,6 +62,7 @@ function App() {
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
             <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+            <Stack.Screen name="PublicAlbumPhotosScreen" component={PublicAlbumPhotosScreen} />
           </Stack.Group>
           <Stack.Group screenOptions={{ presentation: "modal" }}>
             <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />

@@ -1,5 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
-import { PhotoItem, PhotoToAdd, Store } from "./contexts";
+import { DummyPhotoStore, PhotoItem, PhotoRowInDatabase, PhotoToAdd, Store } from "./contexts";
 import { createContext, useContext } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
@@ -14,6 +14,7 @@ type Album = {
     name: string,
     photoQuantity: number,
     onlineStatus?: OnlineStatus
+    accessKey?: string
 }
 
 abstract class AlbumPhotoStore extends Store {
@@ -36,7 +37,7 @@ class LocalAlbumPhotoStore extends AlbumPhotoStore {
 
     async refresh(): Promise<LocalAlbumPhotoStore> {
         const rows = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo inner join AlbumPhoto on Photo.id = AlbumPhoto.photo_id where AlbumPhoto.album_id = $albumId order by date_taken desc, id desc', { $albumId: this.album.id });
-        return new LocalAlbumPhotoStore(this.album, this.db, this.mapRows(rows));
+        return new LocalAlbumPhotoStore(this.album, this.db, this.mapRows(rows as PhotoRowInDatabase[]));
     }
 
     async addNewPhotos(photos: PhotoItem[]): Promise<LocalAlbumPhotoStore> {
@@ -65,9 +66,29 @@ class LocalAlbumPhotoStore extends AlbumPhotoStore {
     }
 }
 
+async function convertOnlineIntoPhotoItems(data: PhotoRowInDatabase[]): Promise<PhotoItem[]> {
+    if (data.length > 0) {
+        const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration,);
+        if (!resultingUrls.error) {
+            const photoItems = data.flatMap((item, index) => {
+                const resultingUrl = resultingUrls.data[index];
+                if (resultingUrl.error) {
+                    console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
+                    return [];
+                }
+                const uri = resultingUrl.signedUrl;
+                return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
+            })
+            return photoItems;
+        } else
+            console.log("error in convertOnlineIntoPhotoItems:", resultingUrls.error)
+    }
+
+    return [];
+}
+
 class OnlineAlbumPhotoStore extends AlbumPhotoStore {
     session: Session
-    timeObtained: Date | undefined
 
     constructor(album: Album, session: Session, photoItems: PhotoItem[] = []) {
         super(album);
@@ -76,6 +97,8 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
     }
 
     async refresh(): Promise<OnlineAlbumPhotoStore> {
+        let photoItems: PhotoItem[] = []
+
         if (this.session) {
             const { data, error, status } = await supabase.from('photo')
                 .select('id, uri, date_taken, album!inner(id)')
@@ -84,26 +107,10 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
             if (error) {
                 console.log("error in OnlineAlbumPhotoStore.refresh:", error)
                 console.log("status in OnlineAlbumPhotoStore.refresh:", status)
-            } else if (data.length > 0) {
-                const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
-                if (!resultingUrls.error) {
-                    this.timeObtained = new Date();
-                    const photoItems = data.flatMap((item, index) => {
-                        const resultingUrl = resultingUrls.data[index];
-                        if (resultingUrl.error) {
-                            console.log(`Couldn't get signed url for ${resultingUrl.path}: ${resultingUrl.error}`);
-                            return [];
-                        }
-                        const uri = resultingUrl.signedUrl;
-                        return { id: item.id, uri: uri, dateTaken: new Date(item.date_taken) };
-                    })
-                    return new OnlineAlbumPhotoStore(this.album, this.session, photoItems);
-                } else
-                    console.log("error in OnlineAlbumPhotoStore.refresh:", resultingUrls.error)
-            }
+            } else photoItems = await convertOnlineIntoPhotoItems(data);
         }
 
-        return new OnlineAlbumPhotoStore(this.album, this.session, []);
+        return new OnlineAlbumPhotoStore(this.album, this.session, photoItems);
     }
 
     async addNewPhotos(photos: PhotoItem[]): Promise<OnlineAlbumPhotoStore> {
@@ -127,6 +134,37 @@ class OnlineAlbumPhotoStore extends AlbumPhotoStore {
     }
 }
 
+class PublicAlbumPhotoStore extends DummyPhotoStore {
+    accessKey: string;
+    photoItems: PhotoItem[];
+
+    constructor(accessKey: string, photoItems: PhotoItem[] = []) {
+        super();
+        this.accessKey = accessKey;
+        this.photoItems = photoItems;
+    }
+
+    async refresh(): Promise<PublicAlbumPhotoStore> {
+        const { data, error } = await supabase.rpc('get_photos_by_access_key', {
+            p_access_key: this.accessKey
+        });
+
+        if (!error) {
+            const sessionData = await supabase.auth.getSession();
+            if (sessionData.data.session) {
+                const { error } = await supabase.auth.updateUser({ data: { access_key: this.accessKey } });
+                if (error)
+                    console.log("Error in PublicAlbumPhotoStore:", error.message);
+            }
+
+            return new PublicAlbumPhotoStore(this.accessKey, await convertOnlineIntoPhotoItems(data));
+        }
+
+        console.log('Error in PublicAlbumPhotoStore.refresh:', error.message);
+        return new PublicAlbumPhotoStore(this.accessKey);
+    }
+}
+
 class AlbumStore {
     localAlbums: Album[]
     onlineAlbums: Album[]
@@ -146,13 +184,13 @@ class AlbumStore {
         let onlineAlbums: Album[] = [];
 
         const { data, error, status } = await supabase.from('album')
-            .select('id, name, is_public, albumphoto(count)')
+            .select('id, name, is_public, albumphoto(count), access_key')
             .order('name', { ascending: true });
         if (error) {
             console.log("error in AlbumStore.refreshOnline:", error)
             console.log("status in AlbumStore.refreshOnline:", status)
         } else {
-            onlineAlbums = data.map(({ id, name, is_public, albumphoto: [{ count }] }) => ({ id: id, name: name, onlineStatus: is_public ? "public" : "private", photoQuantity: count }));
+            onlineAlbums = data.map(({ id, name, is_public, albumphoto: [{ count }], access_key }) => ({ id: id, name: name, onlineStatus: is_public ? "public" : "private", photoQuantity: count, accessKey: access_key }));
         }
 
         return new AlbumStore(this.localAlbums, onlineAlbums);
@@ -194,4 +232,4 @@ function useAlbumStoreContext() {
 
 }
 
-export { Album, AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, AlbumStore, AlbumStoreContext, useAlbumStoreContext };
+export { Album, AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, PublicAlbumPhotoStore, AlbumStore, AlbumStoreContext, useAlbumStoreContext };

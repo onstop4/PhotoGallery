@@ -21,13 +21,15 @@ type PhotoItem = {
 
 type PhotoItemResult = { index: number, photoItem: PhotoItem } | undefined;
 
+type PhotoRowInDatabase = { id: any, uri: any, date_taken: any }
+
 abstract class Store {
 
     photoItems: PhotoItem[] = [];
 
     abstract refresh(): Promise<Store>;
 
-    mapRows(rows: any[]): PhotoItem[] {
+    mapRows(rows: PhotoRowInDatabase[]): PhotoItem[] {
         return rows.map((row: any) => ({ id: Number(row.id), uri: row.uri, dateTaken: new Date(row.date_taken) }));
     }
 
@@ -72,7 +74,7 @@ class LocalPhotoStore extends Store {
 
     async refresh(): Promise<LocalPhotoStore> {
         const rows = await this.db.getAllAsync('select Photo.id as id, Photo.uri as uri, Photo.date_taken as date_taken from Photo order by date_taken desc, id desc');
-        return new LocalPhotoStore(this.db, super.mapRows(rows));
+        return new LocalPhotoStore(this.db, super.mapRows(rows as PhotoRowInDatabase[]));
     }
 
     async addNewPhotos(photos: PhotoToAdd[]): Promise<LocalPhotoStore> {
@@ -230,4 +232,4 @@ function useStoreContext() {
     throw new Error("Store is undefined.");
 }
 
-export { PhotoItem, PhotoItemResult, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };
+export { PhotoItem, PhotoItemResult, PhotoRowInDatabase, Store, LocalPhotoStore, OnlinePhotoStore, PhotoStoreContext, useStoreContext, DummyPhotoStore, PhotoToAdd };

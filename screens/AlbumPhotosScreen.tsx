@@ -10,6 +10,7 @@ import { AlbumPhotoStore, LocalAlbumPhotoStore, OnlineAlbumPhotoStore, useAlbumS
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "helpers/supabase";
 import trySQLiteContext from "helpers/sqlite";
+import * as Clipboard from "expo-clipboard";
 
 type AlbumPhotosScreenProps = NativeStackScreenProps<ParamList, "AlbumPhotosScreen">;
 
@@ -78,6 +79,11 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
                 onDismiss={closeMenu}
                 anchor={menuAnchor}
                 anchorPosition="bottom">
+                {store instanceof AlbumPhotoStore && store.album.onlineStatus == "public" && <Menu.Item onPress={async () => {
+                    closeMenu();
+                    if (store.album.accessKey)
+                        await Clipboard.setStringAsync(store.album.accessKey);
+                }} title="Copy access key" />}
                 <Menu.Item onPress={() => {
                     closeMenu();
                     setTimeout(() => navigation.navigate("SelectToAddPhotosScreen"))

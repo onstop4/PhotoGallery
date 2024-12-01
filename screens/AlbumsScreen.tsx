@@ -74,11 +74,11 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
     return (<>
         <ScrollView>
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                {albumStore?.localAlbums.length && <List.Section>
+                {albumStore?.localAlbums.length > 0 && <List.Section>
                     <List.Subheader>Local albums</List.Subheader>
                     <AlbumList albums={albumStore.localAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
                 </List.Section>}
-                {albumStore?.onlineAlbums.length && <List.Section>
+                {albumStore?.onlineAlbums.length > 0 && <List.Section>
                     <List.Subheader>Online albums</List.Subheader>
                     <AlbumList albums={albumStore.onlineAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
                 </List.Section>}
