@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { Alert, StyleSheet, View, AppState, Button, Text } from 'react-native'
+import { StyleSheet, View, AppState, Button, Text } from 'react-native'
 import { supabase } from 'helpers/supabase';
 import { TextInput } from 'react-native-paper';
 import { Session } from '@supabase/supabase-js';
+import alert from 'helpers/alert';
 
 // Tells Supabase Auth to continuously refresh the session automatically if
 // the app is in the foreground. When this is added, you will continue to receive
@@ -40,7 +41,7 @@ export default function Auth() {
             password: password,
         })
 
-        if (error) Alert.alert(error.message)
+        if (error) alert(error.message)
         setLoading(false)
     }
 
@@ -54,7 +55,7 @@ export default function Auth() {
             password: password,
         })
 
-        if (error) Alert.alert(error.message)
+        if (error) alert(error.message)
         setLoading(false)
     }
 

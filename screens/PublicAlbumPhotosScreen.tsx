@@ -9,8 +9,8 @@ import ParamList from "helpers/paramlists";
 import { useFocusEffect } from "@react-navigation/native";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "helpers/supabase";
-import isMobile from "helpers/isMobile";
 import { PublicAlbumPhotoStore } from "helpers/albums";
+import alert from "helpers/alert";
 
 type PublicAlbumPhotosProps = NativeStackScreenProps<ParamList, "PublicAlbumPhotosScreen">;
 
@@ -27,11 +27,12 @@ function PublicAlbumPhotosScreen({ navigation, route }: PublicAlbumPhotosProps) 
             });
 
             if (error) {
-                console.error('Error fetching album name:', error.message);
                 setStore(new DummyPhotoStore());
+                alert("Error fetching album.", "Please go back and check that you entered the correct access key.")
+                console.log('Error fetching album:', error.message);
             } else {
-                navigation.setOptions({ headerTitle: data });
                 setStore(await new PublicAlbumPhotoStore(accessKey).refresh());
+                navigation.setOptions({ headerTitle: data });
             }
         })();
     }, []);

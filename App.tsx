@@ -62,7 +62,7 @@ function App() {
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
             <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
-            <Stack.Screen name="PublicAlbumPhotosScreen" component={PublicAlbumPhotosScreen} />
+            <Stack.Screen name="PublicAlbumPhotosScreen" component={PublicAlbumPhotosScreen} options={{ headerTitle: "" }} />
           </Stack.Group>
           <Stack.Group screenOptions={{ presentation: "modal" }}>
             <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />

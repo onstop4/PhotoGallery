@@ -9,8 +9,7 @@ import {
     Text,
     TouchableOpacity,
     View,
-    Image,
-    Alert,
+    Image
 } from 'react-native';
 
 type CameraScreenProps = NativeStackScreenProps<ParamList, "CameraScreen">;
