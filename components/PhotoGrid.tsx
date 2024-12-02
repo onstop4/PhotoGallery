@@ -1,8 +1,8 @@
 import { useNavigation } from "@react-navigation/native";
 import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
 import { FC, useContext, useState } from "react";
-import { StyleSheet, Image, View, TouchableOpacity, Text, FlatList, ScrollView } from "react-native";
-import { Checkbox } from "react-native-paper";
+import { StyleSheet, Image, View, TouchableOpacity, ScrollView } from "react-native";
+import { Checkbox, Text } from "react-native-paper";
 
 type action = (photoItem: PhotoItem) => void;
 
@@ -55,10 +55,7 @@ const styles = StyleSheet.create({
     photo: {
         width: 100,
         height: 100,
-
         backgroundColor: "grey",
-        borderWidth: 1.5,
-        borderColor: "#fff"
     },
     checkbox: {
         position: "absolute",

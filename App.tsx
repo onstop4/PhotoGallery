@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LocalPhotosScreen from 'screens/LocalPhotosScreen';
@@ -21,6 +21,7 @@ import SelectToDeletePhotosScreen from 'screens/SelectToDeletePhotosScreen';
 import isMobile from 'helpers/isMobile';
 import PublicAlbumInputScreen from 'screens/PublicAlbumInputScreen';
 import PublicAlbumPhotosScreen from 'screens/PublicAlbumPhotosScreen';
+import { useColorScheme } from 'react-native';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -39,11 +40,11 @@ function MainTabs() {
 
   return (
     <Tabs.Navigator screenOptions={{ headerShown: true, tabBarIconStyle: { display: 'none' } }}>
-      {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local Photos" }} />}
-      {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos" }} />}
-      {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "All albums" }} />}
-      {session && <Tabs.Screen name="PublicAlbumInputScreen" component={PublicAlbumInputScreen} />}
-      <Tabs.Screen name="SettingsScreen" component={SettingsScreen} />
+      {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local photos", tabBarLabel: "Local photos" }} />}
+      {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos", tabBarLabel: "Online photos" }} />}
+      {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "Your albums", tabBarLabel: "Your albums" }} />}
+      {session && <Tabs.Screen name="PublicAlbumInputScreen" component={PublicAlbumInputScreen} options={{ headerTitle: "Access a public album", tabBarLabel: "Public albums" }} />}
+      <Tabs.Screen name="SettingsScreen" component={SettingsScreen} options={{ headerTitle: "Settings", tabBarLabel: "Settings" }} />
     </Tabs.Navigator>
   );
 }
@@ -54,20 +55,22 @@ function App() {
   const initialStore: [Store, React.Dispatch<React.SetStateAction<Store>>] = React.useState(new DummyPhotoStore());
   const albumStore = React.useState(new AlbumStore());
 
+  const colorScheme = useColorScheme();
+
   const common = <AlbumStoreContext.Provider value={albumStore}>
     <PhotoStoreContext.Provider value={initialStore}>
-      <NavigationContainer>
+      <NavigationContainer theme={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack.Navigator>
           <Stack.Group>
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} />
-            <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} />
+            <Stack.Screen name="SinglePhotoScreen" component={SinglePhotoScreen} options={{ headerTitle: "" }} />
+            <Stack.Screen name="AlbumPhotosScreen" component={AlbumPhotosScreen} options={{ headerTitle: "" }} />
             <Stack.Screen name="PublicAlbumPhotosScreen" component={PublicAlbumPhotosScreen} options={{ headerTitle: "" }} />
           </Stack.Group>
           <Stack.Group screenOptions={{ presentation: "modal" }}>
-            <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} />
-            <Stack.Screen name="SelectToDeletePhotosScreen" component={SelectToDeletePhotosScreen} />
-            <Stack.Screen name="CameraScreen" component={CameraScreen} />
+            <Stack.Screen name="SelectToAddPhotosScreen" component={SelectToAddPhotosScreen} options={{ headerTitle: "Select photos to add" }} />
+            <Stack.Screen name="SelectToDeletePhotosScreen" component={SelectToDeletePhotosScreen} options={{ headerTitle: "Select photos to delete" }} />
+            <Stack.Screen name="CameraScreen" component={CameraScreen} options={{ headerTitle: "Camera" }} />
           </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>

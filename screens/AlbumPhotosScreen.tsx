@@ -63,13 +63,15 @@ function AlbumPhotosScreen({ navigation, route }: AlbumPhotosScreenProps) {
             })();
         }
 
-        navigation.setOptions({
-            headerRight: () => <IconButton
-                icon="dots-vertical"
-                size={30}
-                onPressOut={onIconPress}
-            />
-        })
+        if (store instanceof AlbumPhotoStore)
+            navigation.setOptions({
+                headerTitle: store.album.name,
+                headerRight: () => <IconButton
+                    icon="dots-vertical"
+                    size={30}
+                    onPressOut={onIconPress}
+                />
+            })
     })
 
     return (

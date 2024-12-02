@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { StyleSheet, View, AppState, Button, Text } from 'react-native'
+import { StyleSheet, View, AppState, Button } from 'react-native'
 import { supabase } from 'helpers/supabase';
-import { TextInput } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { Session } from '@supabase/supabase-js';
 import alert from 'helpers/alert';
 

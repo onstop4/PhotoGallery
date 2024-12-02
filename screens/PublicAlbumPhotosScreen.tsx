@@ -16,7 +16,6 @@ type PublicAlbumPhotosProps = NativeStackScreenProps<ParamList, "PublicAlbumPhot
 
 function PublicAlbumPhotosScreen({ navigation, route }: PublicAlbumPhotosProps) {
     const [store, setStore] = useStoreContext();
-    const [unsuccessful, setUnsuccessful] = useState(false);
 
     const accessKey = route.params.accessKey;
 
@@ -37,12 +36,7 @@ function PublicAlbumPhotosScreen({ navigation, route }: PublicAlbumPhotosProps) 
         })();
     }, []);
 
-    return <>
-        {unsuccessful
-            ? <Text>Could not get information about this album.Please go back and make sure that you entered the correct access key.</Text>
-            : <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
-        }
-    </>;
+    return <PhotoGrid photoItems={store.photoItems} action={(photoItem: PhotoItem) => navigation.navigate("SinglePhotoScreen", { id: photoItem.id })} ></PhotoGrid>
 }
 
 export default PublicAlbumPhotosScreen;

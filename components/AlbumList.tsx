@@ -1,6 +1,6 @@
 import { Album } from "helpers/albums";
-import { Text, TouchableOpacity, View } from "react-native";
-import { List } from "react-native-paper";
+import { TouchableOpacity, View } from "react-native";
+import { List, Text } from "react-native-paper";
 
 function formatAlbumInfo(album: Album): string {
     let info = `${album.photoQuantity} photo`;
