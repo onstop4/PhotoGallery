@@ -68,7 +68,7 @@ class LocalAlbumPhotoStore extends AlbumPhotoStore {
 
 async function convertOnlineIntoPhotoItems(data: PhotoRowInDatabase[]): Promise<PhotoItem[]> {
     if (data.length > 0) {
-        const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration,);
+        const resultingUrls = await supabase.storage.from("photos").createSignedUrls(data.map(item => item.uri), duration);
         if (!resultingUrls.error) {
             const photoItems = data.flatMap((item, index) => {
                 const resultingUrl = resultingUrls.data[index];

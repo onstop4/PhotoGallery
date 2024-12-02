@@ -33,7 +33,7 @@ const Photo = ({ photoItem, action, deselectAction }: { photoItem: PhotoItem, ac
 
 const PhotoGrid = ({ photoItems, action, deselectAction }: { photoItems: PhotoItem[], action: action, deselectAction?: action }) => {
     const result = photoItems.map((photoItem, index) => <Photo key={index} photoItem={photoItem} action={action} deselectAction={deselectAction} />);
-    return <View style={{ width: "100%", flex: 1, paddingTop: 10 }}>
+    return <View style={{ width: "100%", flex: 1, paddingTop: 10, paddingHorizontal: 8 }}>
         {result.length > 0
             ? <ScrollView contentContainerStyle={styles.grid}>
                 {result}
@@ -49,12 +49,12 @@ const styles = StyleSheet.create({
     grid: {
         flex: 1,
         flexWrap: "wrap",
-        flexDirection: "row",
-        paddingHorizontal: 4
+        flexDirection: "row"
     },
     photo: {
         width: 100,
         height: 100,
+        margin: 2,
         backgroundColor: "grey",
     },
     checkbox: {

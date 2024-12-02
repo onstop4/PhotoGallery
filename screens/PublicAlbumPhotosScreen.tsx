@@ -27,8 +27,9 @@ function PublicAlbumPhotosScreen({ navigation, route }: PublicAlbumPhotosProps) 
 
             if (error) {
                 setStore(new DummyPhotoStore());
-                alert("Error fetching album.", "Please go back and check that you entered the correct access key.")
                 console.log('Error fetching album:', error.message);
+                // Ensures that alert only occurs after store has been updated to prevent old PhotoItems from getting stuck on screen.
+                setTimeout(() => alert("Error fetching album.", "Please go back and check that you entered the correct access key."));
             } else {
                 setStore(await new PublicAlbumPhotoStore(accessKey).refresh());
                 navigation.setOptions({ headerTitle: data });

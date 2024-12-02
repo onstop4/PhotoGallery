@@ -1,7 +1,7 @@
 import { Button, StyleSheet, Text, View } from "react-native";
 import PhotoGrid from "components/PhotoGrid";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore } from "helpers/contexts";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Store, LocalPhotoStore, PhotoItem, PhotoStoreContext, useStoreContext, OnlinePhotoStore, DummyPhotoStore } from "helpers/contexts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Divider, IconButton, Menu } from "react-native-paper";
 import * as ImagePicker from 'expo-image-picker';
@@ -22,13 +22,17 @@ function OnlinePhotosScreen({ navigation }: OnlinePhotosScreenProps) {
 
     const closeMenu = () => setMenuVisible(false);
 
+    const uid = useRef<string | undefined>();
+
     function refreshStore(session: Session | null) {
         new OnlinePhotoStore(session).refresh().then(store => setStore(store));
+        uid.current = session ? session.user.id : undefined;
     }
 
     useEffect(() => {
         supabase.auth.onAuthStateChange((_event, session) => {
-            refreshStore(session);
+            if (!(session && session.user.id === uid.current))
+                refreshStore(session);
         })
     }, [])
 

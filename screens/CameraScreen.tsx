@@ -67,7 +67,7 @@ function CameraScreen({ navigation }: CameraScreenProps) {
         <View style={styles.container}>
             {photoUri ? (
                 <View style={styles.previewContainer}>
-                    <Image source={{ uri: photoUri }} style={styles.preview} />
+                    <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="contain" />
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
                             style={styles.button}
@@ -140,6 +140,5 @@ const styles = StyleSheet.create({
     },
     preview: {
         flex: 1,
-        resizeMode: 'contain',
     },
 });

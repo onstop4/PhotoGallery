@@ -82,11 +82,12 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
                     <List.Subheader>Online albums</List.Subheader>
                     <AlbumList albums={albumStore.onlineAlbums} action={(album) => navigation.navigate("AlbumPhotosScreen", { album })} />
                 </List.Section>}
+                {albumStore?.localAlbums.length === 0 && albumStore?.onlineAlbums.length === 0 && <Text>You don't have any albums.</Text>}
             </View>
         </ScrollView>
         <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <TextInput value={albumNameField} onChangeText={setAlbumNameField} placeholder="Album name" />
-            <RadioButton.Item label="Local" value="local" status={albumOnlineStatusField == "local" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("local")} />
+            {db && <RadioButton.Item label="Local" value="local" status={albumOnlineStatusField == "local" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("local")} />}
             <RadioButton.Item label="Online and public" value="public" status={albumOnlineStatusField == "public" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("public")} />
             <RadioButton.Item label="Online and private" value="private" status={albumOnlineStatusField == "private" ? "checked" : "unchecked"} onPress={() => setAlbumOnlineStatusField("private")} />
             <Button onPress={async () => {
@@ -109,5 +110,5 @@ function AlbumsScreen({ navigation }: AlbumsScreenProps) {
 export default AlbumsScreen;
 
 const styles = StyleSheet.create({
-    modalContainer: { backgroundColor: 'white', padding: 20 }
+    modalContainer: { backgroundColor: '#707070', padding: 20 }
 });

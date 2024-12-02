@@ -82,7 +82,7 @@ function SinglePhotoScreen({ route, navigation }: SinglePhotoScreenProps) {
     return <>
         {found &&
             <Animated.View style={[styles.singlePhotoContainer, { transform: [{ translateX: pan.x }] }]} {...panResponder.panHandlers}>
-                <Image style={styles.singlePhotoItself} source={{ uri: found.photoItem.uri }} />
+                <Image style={styles.singlePhotoItself} source={{ uri: found.photoItem.uri }} resizeMode="contain" />
             </Animated.View>
         }
     </>
@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
     singlePhotoItself: {
         width: '100%',
         height: '100%',
-        resizeMode: 'contain',
     },
 });
 
