@@ -22,7 +22,7 @@ export default function PublicAlbumInputScreen({ navigation }: PublicAlbumInputS
                 />
             </View>
             <View style={[styles.verticallySpaced, styles.mt20]}>
-                <Button title="View photos" onPress={() => navigation.navigate("PublicAlbumPhotosScreen", { accessKey: accessKey })} />
+                <Button title="View photos" onPress={() => { setAccessKey(""); navigation.navigate("PublicAlbumPhotosScreen", { accessKey: accessKey }); }} />
             </View>
         </View>
     )

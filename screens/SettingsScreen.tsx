@@ -41,7 +41,10 @@ export default function Auth() {
             password: password,
         })
 
-        if (error) alert(error.message)
+        if (error)
+            alert(error.message)
+        setEmail("");
+        setPassword("");
         setLoading(false)
     }
 
@@ -55,7 +58,10 @@ export default function Auth() {
             password: password,
         })
 
-        if (error) alert(error.message)
+        if (error)
+            alert(error.message)
+        setEmail("");
+        setPassword("")
         setLoading(false)
     }
 
