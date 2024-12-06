@@ -22,6 +22,11 @@ import isMobile from 'helpers/isMobile';
 import PublicAlbumInputScreen from 'screens/PublicAlbumInputScreen';
 import PublicAlbumPhotosScreen from 'screens/PublicAlbumPhotosScreen';
 import { useColorScheme } from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Fontisto from '@expo/vector-icons/Fontisto';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 function MainTabs() {
   const Tabs = createBottomTabNavigator<ParamList>();
@@ -39,12 +44,12 @@ function MainTabs() {
   }, [])
 
   return (
-    <Tabs.Navigator screenOptions={{ headerShown: true, tabBarIconStyle: { display: 'none' } }}>
-      {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local photos", tabBarLabel: "Local photos" }} />}
-      {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos", tabBarLabel: "Online photos" }} />}
-      {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "Your albums", tabBarLabel: "Your albums" }} />}
-      {session && <Tabs.Screen name="PublicAlbumInputScreen" component={PublicAlbumInputScreen} options={{ headerTitle: "Access a public album", tabBarLabel: "Public albums" }} />}
-      <Tabs.Screen name="SettingsScreen" component={SettingsScreen} options={{ headerTitle: "Settings", tabBarLabel: "Settings" }} />
+    <Tabs.Navigator screenOptions={{ headerShown: true }}>
+      {isMobile && <Tabs.Screen name="LocalPhotosScreen" component={LocalPhotosScreen} options={{ headerTitle: "Local photos", tabBarLabel: "Local photos", tabBarIcon: ({ size, color }) => <MaterialCommunityIcons name="file-image" size={size} color={color} /> }} />}
+      {session && <Tabs.Screen name="OnlinePhotosScreen" component={OnlinePhotosScreen} options={{ headerTitle: "Online photos", tabBarLabel: "Online photos", tabBarIcon: ({ size, color }) => <FontAwesome name="image" size={size} color={color} /> }} />}
+      {(isMobile || session) && <Tabs.Screen name="AlbumsScreen" component={AlbumsScreen} options={{ headerTitle: "Your albums", tabBarLabel: "Your albums", tabBarIcon: ({ size, color }) => <Ionicons name="albums-sharp" size={size} color={color} /> }} />}
+      {session && <Tabs.Screen name="PublicAlbumInputScreen" component={PublicAlbumInputScreen} options={{ headerTitle: "Access a public album", tabBarLabel: "Public albums", tabBarIcon: ({ size, color }) => <MaterialIcons name="public" size={size} color={color} /> }} />}
+      <Tabs.Screen name="SettingsScreen" component={SettingsScreen} options={{ headerTitle: "Settings", tabBarLabel: "Settings", tabBarIcon: ({ size, color }) => <Fontisto name="player-settings" size={size} color={color} /> }} />
     </Tabs.Navigator>
   );
 }
