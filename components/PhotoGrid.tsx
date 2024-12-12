@@ -1,6 +1,5 @@
-import { useNavigation } from "@react-navigation/native";
-import { PhotoItem, PhotoStoreContext, useStoreContext } from "helpers/contexts";
-import { FC, useContext, useState } from "react";
+import { PhotoItem, } from "helpers/contexts";
+import { useState } from "react";
 import { StyleSheet, Image, View, TouchableOpacity, ScrollView } from "react-native";
 import { Checkbox, Text } from "react-native-paper";
 
@@ -52,8 +51,8 @@ const styles = StyleSheet.create({
         flexDirection: "row"
     },
     photo: {
-        width: 100,
-        height: 100,
+        width: 90,
+        height: 90,
         margin: 2,
         backgroundColor: "grey",
     },
